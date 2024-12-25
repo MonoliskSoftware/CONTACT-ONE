@@ -10,8 +10,8 @@
 			"CORP": {
 				"$path": "out/CORP/shared"
 			},
-			"TS": {
-				"$path": "out/src/shared"
+			"CONTACT ONE": {
+				"$path": "out/CONTACT ONE/shared"
 			},
 			"rbxts_include": {
 				"$path": "include",
@@ -27,8 +27,8 @@
 			"CORP": {
 				"$path": "out/CORP/server"
 			},
-			"TS": {
-				"$path": "out/src/server"
+			"CONTACT ONE": {
+				"$path": "out/CONTACT ONE/server"
 			}
 		},
 		"StarterPlayer": {
@@ -36,8 +36,8 @@
 				"CORP": {
 					"$path": "out/CORP/client"
 				},
-				"TS": {
-					"$path": "out/src/client"
+				"CONTACT ONE": {
+					"$path": "out/CONTACT ONE/client"
 				}
 			}
 		}

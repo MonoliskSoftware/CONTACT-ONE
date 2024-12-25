@@ -20,7 +20,7 @@
 		// configurable
 		"rootDirs": [
 			"CORP",
-			"src"
+			"CONTACT ONE"
 		],
 		"outDir": "out",
 		"baseUrl": ".",
