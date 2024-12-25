@@ -1,0 +1,4 @@
+[submodule "CORP"]
+	path = CORP
+	url = https://github.com/MonoliskSoftware/CORP
+	branch = module
