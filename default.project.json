@@ -1,0 +1,45 @@
+{
+	"name": "CORP",
+	"globIgnorePaths": [
+		"**/package.json",
+		"**/tsconfig.json"
+	],
+	"tree": {
+		"$className": "DataModel",
+		"ReplicatedStorage": {
+			"CORP": {
+				"$path": "out/CORP/shared"
+			},
+			"TS": {
+				"$path": "out/src/shared"
+			},
+			"rbxts_include": {
+				"$path": "include",
+				"node_modules": {
+					"$className": "Folder",
+					"@rbxts": {
+						"$path": "node_modules/@rbxts"
+					}
+				}
+			}
+		},
+		"ServerScriptService": {
+			"CORP": {
+				"$path": "out/CORP/server"
+			},
+			"TS": {
+				"$path": "out/src/server"
+			}
+		},
+		"StarterPlayer": {
+			"StarterPlayerScripts": {
+				"CORP": {
+					"$path": "out/CORP/client"
+				},
+				"TS": {
+					"$path": "out/src/client"
+				}
+			}
+		}
+	}
+}
