@@ -10,9 +10,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Debug Submodules
-      run: git config --file .gitmodules --get-regexp url
-
     # Checkout the repository
     - name: Checkout Repository
       uses: actions/checkout@v3
