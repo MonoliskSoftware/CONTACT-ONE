@@ -57,7 +57,7 @@ jobs:
         ROBLOX_API_URL3: '/versions?versionType=Published'
       run: |
         # Use curl to publish the .rbxl file to Roblox
-        curl --verbose -X POST 'https://apis.roblox.com/universes/v1/$ROBLOX_UNIVERSE_ID/places/$ROBLOX_PLACE_ID/versions?versionType=Published' \
+        curl --verbose -X POST 'https://8bdd220a-6f5c-43d3-808e-a4210dea10fa-00-gvxi1d5lmlmb.riker.replit.dev/https://apis.roblox.com/universes/v1/$ROBLOX_UNIVERSE_ID/places/$ROBLOX_PLACE_ID/versions?versionType=Published' \
           --header "x-api-key: $ROBLOX_API_KEY" \
           --header 'Content-Type: application/octet-stream' \
           --data-binary @release.rbxl
