@@ -1,4 +1,4 @@
-name: Build and Publish to Roblox 2
+name: Build and Publish to Roblox Website
 
 on:
   push:
