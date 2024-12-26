@@ -62,5 +62,5 @@ jobs:
 
         # Use curl to publish the .rbxl file to Roblox
         curl -X POST "$ROBLOX_API_URL$ROBLOX_UNIVERSE_ID$ROBLOX_API_URL2$ROBLOX_PLACE_ID$ROBLOX_API_URL3" \
-          -H "x-api-key: $ROBLOX_API_KEY \
+          -H "x-api-key: $ROBLOX_API_KEY" \
           -F "file=@temp/release.rbxl" \
