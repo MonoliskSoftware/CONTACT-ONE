@@ -26,13 +26,15 @@ jobs:
 
     # Run rbxtsc to compile TypeScript to Lua
     - name: Compile with rbxtsc
-      run: npx rbxtsc
+      run: |
+        npx rbxtsc
+        echo "Listing compiled files:"
+        ls -R out
 
     # Install Rojo
     - name: Install Rojo
       run: |
         curl -LO https://github.com/rojo-rbx/rojo/releases/download/v7.4.4/rojo-7.4.4-linux-x86_64.zip
-        ls -a
         unzip rojo-7.4.4-linux-x86_64.zip -d rojo
         sudo mv rojo/rojo /usr/local/bin/rojo
         rojo --version  # Verify installation
