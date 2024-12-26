@@ -25,7 +25,7 @@ jobs:
 
     # Run Rojo build to generate the .rbxl file
     - name: Build with Rojo
-      run: rojo build -output release.rbxl  # Adjust output path as needed
+      run: rojo build --output release.rbxl  # Adjust output path as needed
 
     # Publish to Roblox using ROBLOX API
     - name: Publish to Roblox
