@@ -19,7 +19,7 @@ jobs:
       run: |
         curl -LO https://github.com/rojo-rbx/rojo/releases/download/v7.4.4/rojo-7.4.4-linux-x86_64.zip
         ls -a
-        unzip ./rojo-x86_64-linux.zip -d rojo
+        unzip rojo-7.4.4-linux-x86_64.zip -d rojo
         sudo mv rojo/rojo /usr/local/bin/rojo
         rojo --version  # Verify installation
 
