@@ -20,6 +20,8 @@
 		"plugin:roblox-ts/recommended"
 	],
 	"rules": {
-		"semi": "error"
+		"semi": "error",
+		"no-constant-condition": "off",
+		"@typescript-eslint/no-require-imports": "off"
 	}
 }
