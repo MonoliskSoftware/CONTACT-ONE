@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    # Checkout the 
+    # Checkout the repo
     - name: Checkout Repository
       uses: actions/checkout@v3
       with:
@@ -31,8 +31,6 @@ jobs:
     - name: Compile with rbxtsc
       run: |
         npx rbxtsc
-        echo "Listing compiled files:"
-        ls -R out
 
     # Install Rojo
     - name: Install Rojo
@@ -51,10 +49,7 @@ jobs:
       env:
         ROBLOX_API_KEY: ${{ secrets.ROBLOX_API_KEY }}
         ROBLOX_PLACE_ID: ${{ secrets.ROBLOX_PLACE_ID }}
-        ROBLOX_UNIVERSE_ID: ${{ secrets.ROBLOX_UNIVERSE_ID }}
-        ROBLOX_API_URL: 'https://apis.roblox.com/universes/v1/'
-        ROBLOX_API_URL2: '/places/'
-        ROBLOX_API_URL3: '/versions?versionType=Published'
+        ROBLOX_UNIVERSE_ID: ${{ secrets.ROBLOX_UNIVERSE_ID }}]
       run: |
         # Use curl to publish the .rbxl file to Roblox
         curl --verbose -X POST "https://apis.roblox.com/universes/v1/$ROBLOX_UNIVERSE_ID/places/$ROBLOX_PLACE_ID/versions?versionType=Published" \
