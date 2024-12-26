@@ -50,8 +50,8 @@ jobs:
     - name: Publish to Roblox
       env:
         ROBLOX_API_KEY: ${{ secrets.ROBLOX_API_KEY }}
-        ROBLOX_PLACE_ID: ${{ env.ROBLOX_PLACE_ID }}
-        ROBLOX_UNIVERSE_ID: ${{ env.ROBLOX_UNIVERSE_ID }}
+        ROBLOX_PLACE_ID: ${{ secrets.ROBLOX_PLACE_ID }}
+        ROBLOX_UNIVERSE_ID: ${{ secrets.ROBLOX_UNIVERSE_ID }}
         ROBLOX_API_URL: 'https://apis.roblox.com/universes/v1/'
         ROBLOX_API_URL2: '/places/'
         ROBLOX_API_URL3: '/versions?versionType=Published'
