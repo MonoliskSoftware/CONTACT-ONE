@@ -14,6 +14,20 @@ jobs:
     - name: Checkout Repository
       uses: actions/checkout@v3
 
+    # Set up Node.js (for rbxtsc)
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '16'  # Use the required Node.js version
+      
+    # Install project dependencies
+    - name: Install Dependencies
+      run: npm install  # Ensure your project includes rbxtsc as a dependency
+
+    # Run rbxtsc to compile TypeScript to Lua
+    - name: Compile with rbxtsc
+      run: npx rbxtsc
+
     # Install Rojo
     - name: Install Rojo
       run: |
