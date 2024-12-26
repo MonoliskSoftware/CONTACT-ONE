@@ -14,8 +14,8 @@ jobs:
     - name: Checkout Repository
       uses: actions/checkout@v3
       with:
-        submodules: recursive  # Fetch all submodules recursively
         token: ${{ secrets.GITHUB_TOKEN }}
+        submodules: recursive  # Fetch all submodules recursively
 
     # Set up Node.js (for rbxtsc)
     - name: Set up Node.js
