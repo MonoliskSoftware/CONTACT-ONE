@@ -1,0 +1,46 @@
+name: Build and Publish to Roblox 2
+
+on:
+  push:
+    branches:
+      - release  # Adjust the branch name as needed
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+
+    steps:
+    # Checkout the repository
+    - name: Checkout Repository
+      uses: actions/checkout@v3
+
+    # Install Rojo
+    - name: Install Rojo
+      run: |
+        curl -LO https://github.com/rojo-rbx/rojo/releases/download/v7.4.4/rojo-7.4.4-linux-x86_64.zip
+        unzip rojo-x86_64-linux.zip -d rojo
+        sudo mv rojo/rojo /usr/local/bin/rojo
+        rojo --version  # Verify installation
+
+    # Run Rojo build to generate the .rbxl file
+    - name: Build with Rojo
+      run: rojo build -output release.rbxl  # Adjust output path as needed
+
+    # Publish to Roblox using ROBLOX API
+    - name: Publish to Roblox
+      env:
+        ROBLOX_API_KEY: ${{ secrets.ROBLOX_API_KEY }}
+        ROBLOX_PLACE_ID: ${{ secrets.ROBLOX_PLACE_ID }}
+        ROBLOX_UNIVERSE_ID: ${{ secrets.ROBLOX_UNIVERSE_ID }}
+        ROBLOX_API_URL: 'https://apis.roblox.com/universes/v1/'
+        ROBLOX_API_URL2: '/places/'
+        ROBLOX_API_URL3: '/versions?versionType=Published'
+      run: |
+        # Create a temp directory for the .rbxl file
+        mkdir -p temp
+        mv release.rbxl temp/release.rbxl  # Replace with actual path to the .rbxl
+
+        # Use curl to publish the .rbxl file to Roblox
+        curl -X POST "$ROBLOX_API_URL$ROBLOX_UNIVERSE_ID$ROBLOX_API_URL2$ROBLOX_PLACE_ID$ROBLOX_API_URL3" \
+          -H "x-api-key: $ROBLOX_API_KEY \
+          -F "file=@temp/release.rbxl" \
