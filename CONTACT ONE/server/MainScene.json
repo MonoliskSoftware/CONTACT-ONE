@@ -1,0 +1,16 @@
+{
+	"children": [
+		{
+			"name": "SingletonContainer",
+			"components": [
+				{
+					"path": ["CONTACT ONE/environment/EnvironmentManager", "EnvironmentManager"],
+					"state": {
+
+					}
+				}
+			],
+			"children": []
+		}
+	]
+}
