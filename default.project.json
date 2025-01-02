@@ -40,6 +40,11 @@
 					"$path": "out/CONTACT ONE/client"
 				}
 			}
+		},
+		"Lighting": {
+			"$properties": {
+				"Technology": "Future"
+			}
 		}
 	}
 }

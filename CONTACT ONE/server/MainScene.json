@@ -4,10 +4,32 @@
 			"name": "SingletonContainer",
 			"components": [
 				{
-					"path": ["CONTACT ONE/environment/EnvironmentManager", "EnvironmentManager"],
-					"state": {
-
-					}
+					"path": [
+						"CORP/Scripts/Networking/NetworkObject",
+						"NetworkObject"
+					],
+					"state": {}
+				},
+				{
+					"path": [
+						"CONTACT ONE/environment/EnvironmentManager",
+						"EnvironmentManager"
+					],
+					"state": {}
+				},
+				{
+					"path": [
+						"CONTACT ONE/stacks/StackManager",
+						"StackManager"
+					],
+					"state": {}
+				},
+				{
+					"path": [
+						"CONTACT ONE/players/PlayerManager",
+						"PlayerManager"
+					],
+					"state": {}
 				}
 			],
 			"children": []
