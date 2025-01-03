@@ -1,4 +1,5 @@
 import Object from "@rbxts/object-utils";
+import { RunService } from "@rbxts/services";
 import { GameObject } from "../Scripts/Componentization/GameObject";
 import { ExtractNetworkVariables, NetworkBehavior } from "../Scripts/Networking/NetworkBehavior";
 import { Networking } from "../Scripts/Networking/Networking";
@@ -15,8 +16,10 @@ export class GamePlayer extends NetworkBehavior {
 	private stackBehaviors = undefined as unknown as { [key in GameStack]: StackBehavior };
 
 	public onStart(): void {
-		this.stackBehaviors = this.initializeStackBehaviors();
-		this.applyStack();
+		task.spawn(() => {
+			this.stackBehaviors = this.initializeStackBehaviors();
+			this.applyStack();
+		});
 	}
 
 	public willRemove(): void {
@@ -34,11 +37,15 @@ export class GamePlayer extends NetworkBehavior {
 	}
 
 	private initializeStackBehaviors() {
-		return Object.fromEntries(Object.entries(StackBehaviorConstructors).map(([key, value]) => [key, this.getGameObject().addComponent(value, {
-			initialNetworkVariableStates: ({
-				gamePlayer: this
-			} satisfies ExtractNetworkVariables<StackBehavior> as unknown as Map<string, Networking.NetworkableTypes>)
-		})]));
+		if (RunService.IsServer()) {
+			return Object.fromEntries(Object.entries(StackBehaviorConstructors).map(([key, value]) => [key, this.getGameObject().addComponent(value, {
+				initialNetworkVariableStates: ({
+					gamePlayer: this
+				} satisfies ExtractNetworkVariables<StackBehavior> as unknown as Map<string, Networking.NetworkableTypes>)
+			})]));
+		} else {
+			return Object.fromEntries(Object.entries(StackBehaviorConstructors).map(([key, value]) => [key, this.getGameObject().waitForComponent(value) as StackBehavior]));
+		}
 	}
 
 	constructor(gameObject: GameObject) {
