@@ -7,9 +7,6 @@ import { Serializable } from "../Scripts/Serialization/Serializable";
 import { EnvironmentDescriptions } from "./EnvironmentDescriptions";
 
 const DefaultBakedLighting = {
-	ambient: Color3.fromRGB(50, 50, 50),
-	specularScale: 0.25,
-	brightness: 3,
 	skyBox: {
 		SkyboxBk: "rbxassetid://6444884337",
 		SkyboxDn: "rbxassetid://6444884785",
@@ -33,26 +30,26 @@ const DefaultBakedLighting = {
 			Size: 24,
 			Threshold: 2
 		} as Partial<BloomEffect>]
-	]
+	],
+	properties: {
+		Brightness: 3
+	}
 } satisfies EnvironmentDescriptions.BakedLightingDescription;
-
-export const DefaultLightingState = {
-	timeOfDay: 12,
-	cloudiness: 0.5
-} satisfies EnvironmentDescriptions.LightingState;
 
 export const DefaultLightingUpdatesState = {
 	timeDoesProgress: true,
 	dayLength: 1440
 } satisfies EnvironmentDescriptions.LightingUpdatesState;
 
-/**
- * Applies the properties defined in the partial to the object provided.
- */
-function applyPartial<T>(partial: Partial<T>, object: T) {
-	Object.entries(partial).forEach(([key, value]) => (object as Writable<T> as { [key: string]: defined })[key as string] = value as defined);
-}
+export const DefaultLightingState = {
+	timeOfDay: 12,
+	cloudiness: 0.5,
+	updatesState: DefaultLightingUpdatesState
+} satisfies EnvironmentDescriptions.LightingState;
 
+/**
+ * Manages enviroment/visual aspects, such as lighting and audio.
+ */
 export class EnvironmentManager extends NetworkBehavior {
 	private static singleton: EnvironmentManager;
 	private static readonly environmentUpdateRenderBinding = "EnvironmentManagerRenderingUpdate";
@@ -61,7 +58,6 @@ export class EnvironmentManager extends NetworkBehavior {
 	private bakedLighting: EnvironmentDescriptions.BakedLightingDescription = DefaultBakedLighting;
 
 	private lightingState = new NetworkVariable<EnvironmentDescriptions.LightingState>(this, DefaultLightingState);
-	private lightingUpdatesState = new NetworkVariable<EnvironmentDescriptions.LightingUpdatesState>(this, DefaultLightingUpdatesState);
 	private overridenProperties = new Map<keyof Partial<Lighting>, boolean>();
 
 	private clouds?: Clouds;
@@ -72,28 +68,98 @@ export class EnvironmentManager extends NetworkBehavior {
 	private timeProgressionPerSecond = 1;
 	private currentTimeBasis = 0;
 
+	// --------------
+	//	COMPUTATIONS
+	// --------------
+	/**
+	 * Updates the time progression factor to match the current lighting update state settings.
+	 */
+	private computeLightingUpdatesData(): void {
+		const lightingUpdatesState = this.lightingState.getValue().updatesState;
+
+		this.timeProgressionPerSecond = 24 / lightingUpdatesState.dayLength;
+	}
+
+	/**
+	 * Calculates the intended value of the Haze property for the Atmosphere.
+	 * 
+	 * @param x Cloudiness
+	 * @returns Haze
+	 */
+	private computeHazeFactor(x: number): number {
+		return 15 * (math.max(x - 0.75, 0) ** 2);
+	}
+
+	// ----------
+	//	APPLYING
+	// ----------
 	/**
 	 * Applies all of the base lighting settings.
 	 */
-	private applyGlobalLighting(): void {
-		Lighting.Ambient = new Color3(0, 0, 0);
-		Lighting.OutdoorAmbient = new Color3(0, 0, 0);
+	private applyBakedLighting(): void {
+		Object.assign(Lighting, this.bakedLighting.properties);
 	}
 
-	private computeLightingUpdatesData(): void {
-		this.timeProgressionPerSecond = 24 / this.lightingUpdatesState.getValue().dayLength;
-	}
-
-	private applyLightingState(): void {
+	/**
+	 * Used to apply changes to the state, such as time of day, instantly.
+	 */
+	private applyInstantaneousLightingState(): void {
 		this.currentTimeBasis = tick();
 
 		this.applyProperties({
 			ClockTime: this.lightingState.getValue().timeOfDay
 		});
 
-		this.applyClockTime();
+		this.computeLightingUpdatesData();
+		this.applyTimeAndWeather();
 	}
 
+	/**
+	 * Updates the ClockTime based off of time progression.
+	 */
+	private applyTimeProgression(): void {
+		const lightingState = this.lightingState.getValue();
+
+		this.applyProperties({
+			ClockTime: (lightingState.timeOfDay + ((tick() - this.currentTimeBasis) * this.timeProgressionPerSecond)) % 24
+		});
+	}
+
+	/**
+	 * Applies effects based off of lighting state.
+	 */
+	private applyTimeAndWeather() {
+		const lightingState = this.lightingState.getValue();
+
+		this.applyProperties({
+			ShadowSoftness: lightingState.cloudiness,
+			Brightness: this.getAppliedBrightness() * (1 - lightingState.cloudiness),
+			EnvironmentDiffuseScale: this.getIsNightTime() ? 0 : ((1 - math.abs(Lighting.ClockTime - 12) / 12) - this.lightingState.getValue().cloudiness * 0.5)
+		});
+
+		// Appply individual effects
+		if (this.clouds)
+			this.clouds.Cover = lightingState.cloudiness;
+
+		if (this.atmosphere)
+			this.atmosphere.Haze = this.computeHazeFactor(lightingState.cloudiness) * 3;
+	}
+
+	/**
+	 * Applies the properties to the Lighting service.
+	 */
+	private applyProperties(properties: Partial<Lighting>): void {
+		Object.assign(Lighting, Object.entries(properties).filter(([key]) => !this.overridenProperties.get(key)));
+	}
+
+	// -----------------
+	//	INITIALIZATIONS
+	// -----------------
+	/**
+	 * Initializes effects used for weather.
+	 * 
+	 * @returns Clouds effect
+	 */
 	private initializeWeather(): Clouds {
 		const clouds = new Instance("Clouds");
 
@@ -102,16 +168,26 @@ export class EnvironmentManager extends NetworkBehavior {
 		return clouds;
 	}
 
+	/**
+	 * Initializes Sky effects.
+	 * 
+	 * @returns Sky
+	 */
 	private initializeSky(): Sky {
 		const sky = new Instance("Sky");
 
-		applyPartial(this.bakedLighting.skyBox, sky);
+		Object.assign(sky, this.bakedLighting.skyBox);
 
 		sky.Parent = Lighting;
 
 		return sky;
 	}
 
+	/**
+	 * Initializes Atmosphere effects.
+	 * 
+	 * @returns Atmosphere
+	 */
 	private initializeAtmosphere(): Atmosphere {
 		const atmosphere = new Instance("Atmosphere");
 
@@ -123,21 +199,28 @@ export class EnvironmentManager extends NetworkBehavior {
 		return atmosphere;
 	}
 
+	/**
+	 * Initializes effects described in the baked lighting description.
+	 */
+	private initializeBakedEffects(): void {
+		this.bakedLighting.effects.forEach(([clazz, props]) => {
+			const effect = new Instance(clazz);
+
+			Object.assign(effect, props);
+
+			effect.Parent = Lighting;
+		});
+	}
+
 	private onRenderStep(deltaTime: number): void {
-		const lightingUpdatesState = this.lightingUpdatesState.getValue();
 		const lightingState = this.lightingState.getValue();
+		const lightingUpdatesState = lightingState.updatesState;
 
 		if (lightingUpdatesState.timeDoesProgress) {
-			this.applyProperties({
-				ClockTime: (lightingState.timeOfDay + ((tick() - this.currentTimeBasis) * this.timeProgressionPerSecond)) % 24
-			});
-
-			this.applyClockTime();
+			this.applyTimeProgression();
 		}
 
-		this.lightingState.getValue().cloudiness = (math.sin(tick() / 10) + 1) / 2;
-
-		this.applyWeather();
+		this.applyTimeAndWeather();
 	}
 
 	private getIsNightTime(): boolean {
@@ -145,51 +228,7 @@ export class EnvironmentManager extends NetworkBehavior {
 	}
 
 	private getAppliedBrightness(): number {
-		return this.getIsNightTime() ? 0 : this.bakedLighting.brightness;
-	}
-
-	private applyClockTime(): void {
-		this.applyProperties({
-			EnvironmentDiffuseScale: this.getIsNightTime() ? 0 : ((1 - math.abs(Lighting.ClockTime - 12) / 12) - this.lightingState.getValue().cloudiness * 0.5)
-		});
-	}
-
-	private initializeEffects(): void {
-		this.bakedLighting.effects.forEach(([clazz, props]) => {
-			const effect = new Instance(clazz);
-
-			applyPartial(props, effect);
-
-			effect.Parent = Lighting;
-		});
-	}
-
-	/**
-	 * 
-	 * @param x Cloudiness
-	 * @returns 
-	 */
-	private computeHazeFactor(x: number): number {
-		return 15 * (math.max(x - 0.75, 0) ** 2);
-	}
-
-	private applyWeather(): void {
-		const lightingState = this.lightingState.getValue();
-
-		this.applyProperties({
-			ShadowSoftness: lightingState.cloudiness,
-			Brightness: this.getAppliedBrightness() * (1 - lightingState.cloudiness)
-		});
-
-		if (this.clouds)
-			this.clouds.Cover = lightingState.cloudiness;
-
-		if (this.atmosphere)
-			this.atmosphere.Haze = this.computeHazeFactor(lightingState.cloudiness) * 3;
-	}
-
-	private applyProperties(properties: Partial<Lighting>): void {
-		Object.entries(properties).filter(([key]) => !this.overridenProperties.get(key)).forEach(([key, value]) => (Lighting as Writable<Lighting> as { [key: string]: defined })[key] = value);
+		return this.getIsNightTime() ? 0 : this.bakedLighting.properties.Brightness;
 	}
 
 	private getTotalBaseSaturation(): number {
@@ -198,12 +237,10 @@ export class EnvironmentManager extends NetworkBehavior {
 
 	public onStart(): void {
 		if (RunService.IsClient()) {
-			this.applyLightingState();
-			this.applyGlobalLighting();
-			this.computeLightingUpdatesData();
+			this.applyBakedLighting();
+			this.applyInstantaneousLightingState(); // Updates ClockTime to match the value set in the current state
 
-			this.lightingUpdatesState.onValueChanged.connect(state => this.computeLightingUpdatesData());
-			this.lightingState.onValueChanged.connect(state => this.applyLightingState());
+			this.lightingState.onValueChanged.connect(state => this.applyInstantaneousLightingState());
 
 			RunService.BindToRenderStep(EnvironmentManager.environmentUpdateRenderBinding, Enum.RenderPriority.Camera.Value, deltaTime => this.onRenderStep(deltaTime));
 		}
@@ -224,11 +261,12 @@ export class EnvironmentManager extends NetworkBehavior {
 			this.sky = this.initializeSky();
 			this.atmosphere = this.initializeAtmosphere();
 
-			this.initializeEffects();
+			this.initializeBakedEffects();
 		}
 	}
 
 	/**
+	 * Marks a set of properties as overriden or "in use" by other scripts. These properties will not be modified by Environment code.
 	 * 
 	 * @param overridenProperties Map of property names and whether or not it is overriden
 	 */

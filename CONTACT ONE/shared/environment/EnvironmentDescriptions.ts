@@ -1,18 +1,28 @@
 export namespace EnvironmentDescriptions {
 	/**
+	 * Lighting properties required for certain game features to function.
+	 */
+	export type RequiredLightingProperties = {
+		Brightness: number;
+	}
+
+	/**
 	 * Describes baked lighting settings which would not be affected by the {@link LightingState}.
 	 */
 	export interface BakedLightingDescription {
+		/**
+		 * Description for the Skybox.
+		 */
 		skyBox: Partial<Sky>;
 		/**
-		 * The OutdoorAmbient of this environment.
+		 * Properties to have the Lighting service assigned with.
+		 * 
+		 * !!! SOME PROPERTIES ARE REQUIRED !!!
 		 */
-		ambient: Color3;
+		properties: RequiredLightingProperties & Partial<Lighting>;
 		/**
-		 * @see {@link Lighting.EnvironmentSpecularScale}
+		 * Lighting effect descriptions (post-processing, etc.).
 		 */
-		specularScale: number;
-		brightness: number;
 		effects: ["ColorCorrectionEffect" | "BloomEffect", (Partial<ColorCorrectionEffect> | Partial<BloomEffect>)][];
 	}
 
@@ -28,6 +38,10 @@ export namespace EnvironmentDescriptions {
 		 * Decimal from 0-1 describing how cloudy the environment is.
 		 */
 		cloudiness: number;
+		/**
+		 * Describe how lighting should change over time.
+		 */
+		updatesState: LightingUpdatesState;
 	}
 
 	/**
