@@ -1,7 +1,7 @@
 import { StackBehavior } from "./StackBehavior";
 
 /**
- * Used for cases when no stack is active
+ * Used for cases when no stack is active, as a fallback.
  */
 export class FallbackStackBehavior extends StackBehavior {
 	public onActivated(): void {

@@ -5,11 +5,17 @@ import { BattleStackBehavior } from "./local/BattleStackBehavior";
 import { CommandStackBehavior } from "./local/CommandStackBehavior";
 import { StackBehavior } from "./local/StackBehavior";
 
+/**
+ * Index of Stacks in the game
+ */
 export enum GameStack {
 	BATTLE_STACK,
 	COMMAND_STACK
 }
 
+/**
+ * Each stack corresponds to a {@link StackBehavior}.
+ */
 export const StackBehaviorConstructors = {
 	[GameStack.BATTLE_STACK]: BattleStackBehavior,
 	[GameStack.COMMAND_STACK]: CommandStackBehavior,
