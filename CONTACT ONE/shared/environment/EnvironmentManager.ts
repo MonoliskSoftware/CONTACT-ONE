@@ -149,7 +149,7 @@ export class EnvironmentManager extends NetworkBehavior {
 	 * Applies the properties to the Lighting service.
 	 */
 	private applyProperties(properties: Partial<Lighting>): void {
-		Object.assign(Lighting, Object.entries(properties).filter(([key]) => !this.overridenProperties.get(key)));
+		Object.assign(Lighting, Object.fromEntries(Object.entries(properties).filter(([key]) => !this.overridenProperties.get(key))));
 	}
 
 	// -----------------
@@ -216,6 +216,7 @@ export class EnvironmentManager extends NetworkBehavior {
 		const lightingState = this.lightingState.getValue();
 		const lightingUpdatesState = lightingState.updatesState;
 
+		// eslint-disable-next-line roblox-ts/lua-truthiness
 		if (lightingUpdatesState.timeDoesProgress) {
 			this.applyTimeProgression();
 		}
