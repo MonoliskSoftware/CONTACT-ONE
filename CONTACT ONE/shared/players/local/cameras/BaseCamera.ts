@@ -1,4 +1,4 @@
-import { Players, UserInputService, Workspace } from "@rbxts/services";
+import { Players, UserInputService, VRService, Workspace } from "@rbxts/services";
 import { Connection } from "CORP/shared/Libraries/Signal";
 import { FlagUtil } from "../FlagUtil";
 import { CameraInput } from "./CameraInput";
@@ -8,17 +8,37 @@ import { CameraUtils } from "./CameraUtils";
 import { Zoom } from "./ZoomController";
 
 const FFlagUserFixGamepadMaxZoom = FlagUtil.getUserFlag("UserFixGamepadMaxZoom");
+const FFlagUserFixCameraOffsetJitter = FlagUtil.getUserFlag("UserFixCameraOffsetJitter2");
 
 const UserGameSettings = UserSettings().GetService("UserGameSettings");
 
 const DEFAULT_DISTANCE = 12.5;	// Studs
 
 const ZOOM_SENSITIVITY_CURVATURE = 0.5;
-const FIRST_PERSON_DISTANCE_THRESHOLD = 0.5;
+const FIRST_PERSON_DISTANCE_MIN = 0.5;
+const FIRST_PERSON_DISTANCE_THRESHOLD = 1;
+
+// Note: DotProduct check in CoordinateFrame::lookAt() prevents using values within about
+// 8.11 degrees of the +/- Y axis, that's why these limits are currently 80 degrees
+const MIN_Y = math.rad(-80);
+const MAX_Y = math.rad(80);
+
+const VR_ANGLE = math.rad(15);
+const VR_LOW_INTENSITY_ROTATION = new Vector2(math.rad(15), 0);
+const VR_HIGH_INTENSITY_ROTATION = new Vector2(math.rad(45), 0);
+const VR_LOW_INTENSITY_REPEAT = 0.1;
+const VR_HIGH_INTENSITY_REPEAT = 0.4;
+
+const SEAT_OFFSET = new Vector3(0, 5, 0);
+const VR_SEAT_OFFSET = new Vector3(0, 4, 0);
+const HEAD_OFFSET = new Vector3(0, 1.5, 0);
+const R15_HEAD_OFFSET = new Vector3(0, 1.5, 0);
+const R15_HEAD_OFFSET_NO_SCALING = new Vector3(0, 2, 0);
+const HUMANOID_ROOT_PART_SIZE = new Vector3(2, 2, 1);
 
 const player = Players.LocalPlayer;
 
-export class BaseCamera {
+export abstract class BaseCamera {
 	protected static readonly FIRST_PERSON_DISTANCE_THRESHOLD = FIRST_PERSON_DISTANCE_THRESHOLD;
 
 	protected gamepadZoomLevels = [0, 10, 20]; // zoom levels that are cycled through on a gamepad R3 press
@@ -30,7 +50,7 @@ export class BaseCamera {
 	lastUserPanCamera = tick();
 
 	humanoidRootPart: BasePart | undefined;
-	humanoidCache: Humanoid[] = [];
+	humanoidCache = new Map<Player, Humanoid>();
 
 	// Subject and position on last update call
 	lastSubject: Instance | undefined;
@@ -444,4 +464,178 @@ export class BaseCamera {
 		// in range after a change to the min/max distance limits
 		this.SetCameraToSubjectDistance(this.currentSubjectDistance);
 	}
+
+	SetMouseLockOffset(offsetVector: Vector3) {
+		this.mouseLockOffset = offsetVector;
+	}
+
+	SetIsMouseLocked(mouseLocked: boolean) {
+		this.inMouseLockedMode = mouseLocked;
+	}
+
+	IsInFirstPerson() {
+		return this.inFirstPerson;
+	}
+
+	GetHumanoidRootPart(): BasePart {
+		if (!this.humanoidRootPart && player.Character) {
+			const humanoid = player.Character.FindFirstChildOfClass("Humanoid");
+
+			if (humanoid) {
+				this.humanoidRootPart = humanoid.RootPart;
+			}
+		}
+
+		return this.humanoidRootPart as BasePart;
+	}
+
+	GetHumanoid(): Humanoid | undefined {
+		const character = player?.Character;
+
+		if (!character) return undefined;
+
+		const resultHumanoid = this.humanoidCache.get(player);
+
+		if (resultHumanoid && resultHumanoid.Parent === character) return resultHumanoid;
+
+		this.humanoidCache.delete(player); // Bust Old Cache
+
+		const humanoid = character.FindFirstAncestorOfClass("Humanoid");
+
+		if (humanoid) this.humanoidCache.set(player, humanoid);
+
+		return humanoid;
+	}
+
+	GetCameraHeight() {
+		if (VRService.VREnabled && !this.inFirstPerson) return math.sin(VR_ANGLE) * this.currentSubjectDistance;
+
+		return 0;
+	}
+
+	GetSubjectPosition(): Vector3 | undefined {
+		let result = this.lastSubjectPosition;
+		const camera = game.Workspace.CurrentCamera as Camera;
+		const cameraSubject = camera && camera.CameraSubject as BasePart | VehicleSeat | Model | Humanoid | SkateboardPlatform | undefined;
+
+		if (cameraSubject) {
+			if (cameraSubject.IsA("Humanoid")) {
+				const humanoid = cameraSubject;
+				const humanoidIsDead = humanoid.GetState() === Enum.HumanoidStateType.Dead;
+
+				let cameraOffset = humanoid.CameraOffset;
+				// when in mouse lock mode, the character's rotation follows the camera instead of vice versa.
+				// Allow the mouse lock calculation to be camera based instead of subject based to prevent jitter
+				if (FFlagUserFixCameraOffsetJitter && this.GetIsMouseLocked()) {
+					cameraOffset = new Vector3();
+				}
+
+				let bodyPartToFollow = humanoid.RootPart as Instance | undefined;
+
+				// if the humanoid is dead, prefer their head part as a follow target, if it exists
+				if (humanoidIsDead) {
+					if (humanoid.Parent && humanoid.Parent.IsA("Model")) {
+						bodyPartToFollow = humanoid.Parent.FindFirstChild("Head") ?? bodyPartToFollow;
+					}
+				}
+
+				if (bodyPartToFollow && bodyPartToFollow.IsA("BasePart")) {
+					let heightOffset;
+
+					if (humanoid.RigType === Enum.HumanoidRigType.R15) {
+						if (humanoid.AutomaticScalingEnabled) {
+							heightOffset = R15_HEAD_OFFSET;
+							if (bodyPartToFollow === humanoid.RootPart) {
+								const rootPartSizeOffset = (humanoid.RootPart.Size.Y / 2) - (HUMANOID_ROOT_PART_SIZE.Y / 2);
+								heightOffset = heightOffset.add(new Vector3(0, rootPartSizeOffset, 0));
+							}
+						} else {
+							heightOffset = R15_HEAD_OFFSET_NO_SCALING;
+						}
+					} else {
+						heightOffset = HEAD_OFFSET;
+					}
+
+					if (humanoidIsDead) {
+						heightOffset = Vector3.zero;
+					}
+
+					result = bodyPartToFollow.CFrame.Position.add(bodyPartToFollow.CFrame.VectorToWorldSpace(heightOffset.add(cameraOffset)));
+				}
+
+			} else if (cameraSubject.IsA("VehicleSeat")) {
+				const offset = SEAT_OFFSET;
+				result = cameraSubject.CFrame.Position.add(cameraSubject.CFrame.VectorToWorldSpace(offset));
+			} else if (cameraSubject.IsA("SkateboardPlatform")) {
+				result = cameraSubject.CFrame.Position.add(SEAT_OFFSET);
+			} else if (cameraSubject.IsA("BasePart")) {
+				result = cameraSubject.CFrame.Position;
+			} else if (cameraSubject.IsA("Model")) {
+				result = cameraSubject.GetPivot().Position;
+			}
+		} else {
+			// cameraSubject is nil
+			// Note: Previous RootCamera did not have this }else{ case and let this.lastSubject and this.lastSubjectPosition
+			// both get set to nil in the case of cameraSubject being nil. This function now exits here to preserve the
+			// last set valid values for these, as nil values are not handled cases
+			return undefined;
+		}
+
+		this.lastSubject = cameraSubject;
+		this.lastSubjectPosition = result;
+
+		return result;
+	}
+
+	GetCameraLookVector(): Vector3 {
+		return Workspace.CurrentCamera ? Workspace.CurrentCamera.CFrame.LookVector : new Vector3(0, 0, 1);
+	}
+
+	CalculateNewLookCFrameFromArg(suppliedLookVector: Vector3 | undefined, rotateInput: Vector2): CFrame {
+		const currLookVector: Vector3 = suppliedLookVector || this.GetCameraLookVector();
+		const currPitchAngle = math.asin(currLookVector.Y);
+		const yTheta = math.clamp(rotateInput.Y, -MAX_Y + currPitchAngle, -MIN_Y + currPitchAngle);
+		const constrainedRotateInput = new Vector2(rotateInput.X, yTheta);
+		const startCFrame = new CFrame(Vector3.zero, currLookVector);
+		const newLookCFrame = CFrame.Angles(0, -constrainedRotateInput.X, 0).mul(startCFrame).mul(CFrame.Angles(-constrainedRotateInput.Y, 0, 0));
+
+		return newLookCFrame;
+	}
+
+	GetMouseLockOffset() {
+		return this.mouseLockOffset;
+	}
+
+	GetIsMouseLocked(): boolean {
+		return this.inMouseLockedMode;
+	}
+
+	CalculateNewLookVectorFromArg(suppliedLookVector: Vector3 | undefined, rotateInput: Vector2): Vector3 {
+		const newLookCFrame = this.CalculateNewLookCFrameFromArg(suppliedLookVector, rotateInput);
+
+		return newLookCFrame.LookVector;
+	}
+	
+	StepZoom() {
+		const zoom = this.currentSubjectDistance;
+		const zoomDelta = CameraInput.getZoomDelta();
+
+		if (math.abs(zoomDelta) > 0) {
+			let newZoom;
+
+			if (zoomDelta > 0) {
+				newZoom = math.max(zoom + zoomDelta * (1 + zoom * ZOOM_SENSITIVITY_CURVATURE), BaseCamera.FIRST_PERSON_DISTANCE_THRESHOLD);
+			} else {
+				newZoom = math.max((zoom + zoomDelta) / (1 - zoomDelta * ZOOM_SENSITIVITY_CURVATURE), FIRST_PERSON_DISTANCE_MIN);
+			}
+
+			if (newZoom < BaseCamera.FIRST_PERSON_DISTANCE_THRESHOLD) newZoom = FIRST_PERSON_DISTANCE_MIN;
+
+			this.SetCameraToSubjectDistance(newZoom);
+		}
+
+		return Zoom.GetZoomRadius();
+	}
+
+	abstract Update(dt: number): [CFrame, CFrame];
 }

@@ -56,21 +56,24 @@ class ConstrainedSpring {
 	}
 }
 
-let cameraMinZoomDistance = 0;
-let cameraMaxZoomDistance = 0;
+let cameraMinZoomDistance: number;
+let cameraMaxZoomDistance: number;
 
 const Player = Players.LocalPlayer;
-assert(Player);
 
 function updateBounds() {
 	cameraMinZoomDistance = Player.CameraMinZoomDistance;
 	cameraMaxZoomDistance = Player.CameraMaxZoomDistance;
 }
 
-updateBounds();
+if (Player) {
+	updateBounds();
+	
+	Player.GetPropertyChangedSignal("CameraMinZoomDistance").Connect(updateBounds);
+	Player.GetPropertyChangedSignal("CameraMaxZoomDistance").Connect(updateBounds);
+}
 
-Player.GetPropertyChangedSignal("CameraMinZoomDistance").Connect(updateBounds);
-Player.GetPropertyChangedSignal("CameraMaxZoomDistance").Connect(updateBounds);
+
 
 const ZOOM_STIFFNESS = 4.5;
 const ZOOM_DEFAULT = 12.5;

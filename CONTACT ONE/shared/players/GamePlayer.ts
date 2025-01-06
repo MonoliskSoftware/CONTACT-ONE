@@ -7,6 +7,7 @@ import { NetworkVariable } from "../Scripts/Networking/NetworkVariable";
 import { FallbackStackBehavior } from "../stacks/local/FallbackStackBehavior";
 import { StackBehavior } from "../stacks/local/StackBehavior";
 import { GameStack, StackBehaviorConstructors } from "../stacks/StackManager";
+import { CameraModule } from "./local/cameras/CameraModule";
 
 export class GamePlayer extends NetworkBehavior {
 	public readonly player = new NetworkVariable<Player>(this, undefined as unknown as Player);
@@ -20,6 +21,10 @@ export class GamePlayer extends NetworkBehavior {
 			this.stackBehaviors = this.initializeStackBehaviors();
 			this.applyStack();
 		});
+
+		if (RunService.IsClient()) {
+			const c = new CameraModule();
+		}
 	}
 
 	public willRemove(): void {

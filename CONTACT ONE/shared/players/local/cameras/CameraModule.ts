@@ -3,8 +3,12 @@ import { Constructable, dict } from "CORP/shared/Libraries/Utilities";
 import { FlagUtil } from "../FlagUtil";
 import { BaseCamera } from "./BaseCamera";
 import { BaseOcclusion } from "./BaseOcclusion";
+import { CameraInput } from "./CameraInput";
 import { CameraUtils } from "./CameraUtils";
+import { ClassicCamera } from "./ClassicCamera";
+import { MouseLockController } from "./MouseLockController";
 import { Poppercam } from "./Poppercam";
+import { TransparencyController } from "./TransparencyController";
 
 const UserGameSettings = UserSettings().GetService("UserGameSettings");
 
@@ -89,10 +93,10 @@ export class CameraModule {
 
 	constructor() {
 		// Adds CharacterAdded and CharacterRemoving event handlers for all current players
-		Players.GetPlayers().forEach(player => this.onPlayerAdded(player));
+		Players.GetPlayers().forEach(player => this.OnPlayerAdded(player));
 
 		// Adds CharacterAdded and CharacterRemoving event handlers for all players who join in the future
-		Players.PlayerAdded.Connect(player => this.onPlayerAdded(player));
+		Players.PlayerAdded.Connect(player => this.OnPlayerAdded(player));
 
 		this.activeTransparencyController = new TransparencyController();
 		this.activeTransparencyController.Enable(true);
@@ -121,12 +125,27 @@ export class CameraModule {
 		Workspace.GetPropertyChangedSignal("CurrentCamera").Connect(() => this.OnCurrentCameraChanged());
 	}
 
-	onPlayerAdded(player: Player): void {
-		throw new Error("Method not implemented.");
+	OnPlayerAdded(player: Player): void {
+		player.CharacterAdded.Connect(char => this.OnCharacterAdded(char, player));
+		player.CharacterRemoving.Connect(char => this.OnCharacterRemoving(char, player));
+	}
+
+	OnCharacterAdded(char: Model, player: Player): void {
+		if (this.activeOcclusionModule) this.activeOcclusionModule.CharacterAdded(char, player);
+	}
+
+	OnCharacterRemoving(char: Model, player: Player): void {
+		if (this.activeOcclusionModule) this.activeOcclusionModule.CharacterRemoving(char, player);
 	}
 
 	OnMouseLockToggled() {
-		throw new Error("Method not implemented.");
+		if (this.activeMouseLockController && this.activeCameraController) {
+			const mouseLocked = this.activeMouseLockController.GetIsMouseLocked();
+			const mouseLockOffset = this.activeMouseLockController.GetMouseLockOffset();
+
+			this.activeCameraController.SetIsMouseLocked(mouseLocked);
+			this.activeCameraController.SetMouseLockOffset(mouseLockOffset);
+		}
 	}
 
 	/**
@@ -139,7 +158,7 @@ export class CameraModule {
 			cameraMovementMode = this.GetCameraMovementModeFromSettings();
 		}
 
-		let newCameraCreator = undefined;
+		let newCameraCreator: Constructable<BaseCamera> = undefined as unknown as Constructable<BaseCamera>;
 
 		// Some legacy CameraTypes map to the use of
 		// the LegacyCamera module, the value "Custom" will be translated to a movementMode enum
@@ -166,7 +185,7 @@ export class CameraModule {
 				legacyCameraType === Enum.CameraType.Attach
 				|| legacyCameraType === Enum.CameraType.Watch
 				|| legacyCameraType === Enum.CameraType.Fixed) {
-				newCameraCreator = LegacyCamera;
+				// newCameraCreator = LegacyCamera;
 			} else {
 				warn("CameraScript encountered an unhandled Camera.CameraType value. ", legacyCameraType);
 			}
@@ -174,14 +193,14 @@ export class CameraModule {
 
 		if (!newCameraCreator) {
 			if (VRService.VREnabled) {
-				newCameraCreator = VRCamera;
+				// newCameraCreator = VRCamera;
 			} else if (cameraMovementMode === Enum.ComputerCameraMovementMode.Classic ||
 				cameraMovementMode === Enum.ComputerCameraMovementMode.Follow ||
 				cameraMovementMode === Enum.ComputerCameraMovementMode.Default ||
 				cameraMovementMode === Enum.ComputerCameraMovementMode.CameraToggle) {
 				newCameraCreator = ClassicCamera;
 			} else if (cameraMovementMode === Enum.ComputerCameraMovementMode.Orbital) {
-				newCameraCreator = OrbitalCamera;
+				// newCameraCreator = OrbitalCamera;
 			} else {
 				warn("ActivateCameraController did !select a module.");
 				return;
@@ -192,9 +211,9 @@ export class CameraModule {
 
 		if (isVehicleCamera) {
 			if (VRService.VREnabled) {
-				newCameraCreator = VRVehicleCamera;
+				// newCameraCreator = VRVehicleCamera;
 			} else {
-				newCameraCreator = VehicleCamera;
+				// newCameraCreator = VehicleCamera;
 			}
 		}
 
@@ -202,7 +221,7 @@ export class CameraModule {
 		let newCameraController: BaseCamera = undefined as unknown as BaseCamera;
 
 		if (!CameraModule.instantiatedCameraControllers.has(newCameraCreator)) {
-			newCameraController = newCameraCreator.new();
+			newCameraController = new newCameraCreator();
 			CameraModule.instantiatedCameraControllers.set(newCameraCreator, newCameraController);
 		} else {
 			newCameraController = CameraModule.getInstantiatedCameraController(newCameraCreator) as BaseCamera;
@@ -299,7 +318,7 @@ export class CameraModule {
 				newModuleCreator = Poppercam;
 				break;
 			case Enum.DevCameraOcclusionMode.Invisicam:
-				newModuleCreator = Invisicam;
+				// newModuleCreator = Invisicam;
 				break;
 			default:
 				warn("CameraScript ActivateOcclusionModule called with unsupported mode");
@@ -422,8 +441,23 @@ export class CameraModule {
 		this.ActivateCameraController(undefined, newCameraType);
 	}
 
-	Update(deltaTime: number): void {
-		throw new Error("Method not implemented.");
+	Update(dt: number): void {
+		if (this.activeCameraController) {
+			this.activeCameraController.UpdateMouseBehavior();
+
+			const [newCameraCFrame, newCameraFocus] = this.activeCameraController.Update(dt);
+
+			// Here is where the new CFrame and Focus are set for this render frame
+			const currentCamera = Workspace.CurrentCamera as Camera;
+
+			currentCamera.CFrame = newCameraCFrame;
+			currentCamera.Focus = newCameraFocus;
+
+			// Update to character local transparency as needed based on camera-to-subject distance
+			this.activeTransparencyController?.Update(dt);
+
+			if (CameraInput.getInputEnabled()) CameraInput.resetInputForFrameEnd();
+		}
 	}
 
 	OnLocalPlayerCameraPropertyChanged(propertyName: string): void {

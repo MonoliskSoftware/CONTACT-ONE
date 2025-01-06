@@ -167,8 +167,8 @@ function getCollisionPoint(origin: Vector3, dir: Vector3) {
 	} else {
 		const originalSize = excludeList.size();
 
-		let hitPart = undefined;
-		let hitPoint = undefined;
+		let hitPart: BasePart | undefined = undefined;
+		let hitPoint: Vector3 | undefined = undefined;
 
 		do {
 			[hitPart, hitPoint] = Workspace.FindPartOnRayWithIgnoreList(
@@ -209,7 +209,7 @@ function queryPoint(origin: Vector3, unitDir: Vector3, dist: number, lastPos?: V
 	let numPierced = 0;
 
 	if (FFlagUserRaycastPerformanceImprovements) {
-		let entryInstance, entryPosition;
+		let entryInstance: BasePart | undefined = undefined, entryPosition: Vector3;
 
 		do {
 			excludeParams.FilterDescendantsInstances = excludeList;
@@ -217,7 +217,7 @@ function queryPoint(origin: Vector3, unitDir: Vector3, dist: number, lastPos?: V
 			const enterRaycastResult = Workspace.Raycast(movingOrigin, target.sub(movingOrigin), excludeParams);
 
 			if (enterRaycastResult) {
-				[entryInstance, entryPosition] = [enterRaycastResult.Instance, enterRaycastResult.Position];
+				[entryInstance, entryPosition] = [enterRaycastResult.Instance, enterRaycastResult.Position] as [BasePart, Vector3];
 				numPierced += 1;
 
 				const earlyAbort = numPierced >= QUERY_POINT_CAST_LIMIT;
@@ -252,10 +252,10 @@ function queryPoint(origin: Vector3, unitDir: Vector3, dist: number, lastPos?: V
 				excludeParams.AddToFilter(entryInstance);
 				movingOrigin = entryPosition.sub((unitDir.mul(1e-3)));
 			}
-		} while (hardLimit >= math.huge && entryInstance);
+		} while (hardLimit >= math.huge && entryInstance !== undefined);
 	} else {
-		let entryPart;
-		let entryPos;
+		let entryPart: BasePart | undefined;
+		let entryPos: Vector3 | undefined;
 
 		do {
 			[entryPart, entryPos] = Workspace.FindPartOnRayWithIgnoreList(new Ray(movingOrigin, target.sub(movingOrigin)), excludeList, false, true);
