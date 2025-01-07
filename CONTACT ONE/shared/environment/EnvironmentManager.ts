@@ -258,6 +258,8 @@ export class EnvironmentManager extends NetworkBehavior {
 		EnvironmentManager.singleton = this;
 
 		if (RunService.IsClient()) {
+			Lighting.ClearAllChildren();
+			
 			this.clouds = this.initializeWeather();
 			this.sky = this.initializeSky();
 			this.atmosphere = this.initializeAtmosphere();

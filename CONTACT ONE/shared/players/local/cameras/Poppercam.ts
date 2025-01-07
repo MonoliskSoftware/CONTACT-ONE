@@ -1,6 +1,6 @@
 import { FlagUtil } from "../FlagUtil";
 import { BaseOcclusion } from "./BaseOcclusion";
-import { Zoom } from "./ZoomController";
+import { ZoomController } from "./ZoomController";
 
 const FFlagUserFixCameraFPError = FlagUtil.getUserFlag("UserFixCameraFPError");
 
@@ -100,7 +100,7 @@ export class Poppercam extends BaseOcclusion {
 		}
 
 		const extrapolation = this.focusExtrapolator.Step(renderDt, rotatedFocus);
-		const zoom = Zoom.Update(renderDt, rotatedFocus, extrapolation);
+		const zoom = ZoomController.singleton.Update(renderDt, rotatedFocus, extrapolation);
 
 		return $tuple(rotatedFocus.mul(new CFrame(0, 0, zoom)), desiredCameraFocus);
 	}

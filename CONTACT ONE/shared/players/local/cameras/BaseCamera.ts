@@ -5,7 +5,7 @@ import { CameraInput } from "./CameraInput";
 import { CameraToggleStateController } from "./CameraToggleStateController";
 import { CameraUI } from "./CameraUI";
 import { CameraUtils } from "./CameraUtils";
-import { Zoom } from "./ZoomController";
+import { ZoomController } from "./ZoomController";
 
 const FFlagUserFixGamepadMaxZoom = FlagUtil.getUserFlag("UserFixGamepadMaxZoom");
 const FFlagUserFixCameraOffsetJitter = FlagUtil.getUserFlag("UserFixCameraOffsetJitter2");
@@ -47,6 +47,7 @@ export abstract class BaseCamera {
 	cameraMovementMode: CameraUtils.StandardizedMovementModes | undefined;
 
 	lastCameraTransform: CFrame | undefined;
+	lastCameraFocus: CFrame | undefined;
 	lastUserPanCamera = tick();
 
 	humanoidRootPart: BasePart | undefined;
@@ -152,7 +153,7 @@ export abstract class BaseCamera {
 			});
 		}
 
-		this.OnPlayerCameraPropertyChange();
+		// this.OnPlayerCameraPropertyChange();
 	}
 
 	OnCharacterAdded(char: Model) {
@@ -212,7 +213,7 @@ export abstract class BaseCamera {
 		}
 
 		// Pass target distance and zoom direction to the zoom controller
-		Zoom.SetZoomParameters(this.currentSubjectDistance, math.sign(desiredSubjectDistance - lastSubjectDistance));
+		ZoomController.singleton.SetZoomParameters(this.currentSubjectDistance, math.sign(desiredSubjectDistance - lastSubjectDistance));
 
 		// Returned only for convenience to the caller to know the outcome
 		return this.currentSubjectDistance;
@@ -455,10 +456,6 @@ export abstract class BaseCamera {
 		CameraUtils.restoreMouseBehavior();
 	}
 
-	GetModuleName() {
-		return "BaseCamera";
-	}
-
 	UpdateForDistancePropertyChange() {
 		// Calling this setter with the current value will force checking that it is still
 		// in range after a change to the min/max distance limits
@@ -634,8 +631,9 @@ export abstract class BaseCamera {
 			this.SetCameraToSubjectDistance(newZoom);
 		}
 
-		return Zoom.GetZoomRadius();
+		return ZoomController.singleton.GetZoomRadius();
 	}
 
-	abstract Update(dt: number): [CFrame, CFrame];
+	abstract Update(dt: number): LuaTuple<[CFrame, CFrame]>;
+	abstract GetModuleName(): string;
 }

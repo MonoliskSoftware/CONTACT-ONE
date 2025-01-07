@@ -7,6 +7,7 @@ import { CameraInput } from "./CameraInput";
 import { CameraUtils } from "./CameraUtils";
 import { ClassicCamera } from "./ClassicCamera";
 import { MouseLockController } from "./MouseLockController";
+import { OrbitalCamera } from "./OrbitalCamera";
 import { Poppercam } from "./Poppercam";
 import { TransparencyController } from "./TransparencyController";
 
@@ -40,20 +41,6 @@ const USER_GAME_SETTINGS_PROPERTIES =
 		"TouchCameraMovementMode",
 		"TouchMovementMode",
 	];
-
-// Management of which options appear on the Roblox User Settings screen
-{
-	const PlayerScripts = Players.LocalPlayer.WaitForChild("PlayerScripts") as PlayerScripts;
-
-	PlayerScripts.RegisterTouchCameraMovementMode(Enum.TouchCameraMovementMode.Default);
-	PlayerScripts.RegisterTouchCameraMovementMode(Enum.TouchCameraMovementMode.Follow);
-	PlayerScripts.RegisterTouchCameraMovementMode(Enum.TouchCameraMovementMode.Classic);
-
-	PlayerScripts.RegisterComputerCameraMovementMode(Enum.ComputerCameraMovementMode.Default);
-	PlayerScripts.RegisterComputerCameraMovementMode(Enum.ComputerCameraMovementMode.Follow);
-	PlayerScripts.RegisterComputerCameraMovementMode(Enum.ComputerCameraMovementMode.Classic);
-	PlayerScripts.RegisterComputerCameraMovementMode(Enum.ComputerCameraMovementMode.CameraToggle);
-}
 
 const FFlagUserRespectLegacyCameraOptions = FlagUtil.getUserFlag("UserRespectLegacyCameraOptions");
 
@@ -92,6 +79,20 @@ export class CameraModule {
 	private occlusionMode: Enum.DevCameraOcclusionMode | undefined;
 
 	constructor() {
+		// Management of which options appear on the Roblox User Settings screen
+		{
+			const PlayerScripts = Players.LocalPlayer.WaitForChild("PlayerScripts") as PlayerScripts;
+
+			PlayerScripts.RegisterTouchCameraMovementMode(Enum.TouchCameraMovementMode.Default);
+			PlayerScripts.RegisterTouchCameraMovementMode(Enum.TouchCameraMovementMode.Follow);
+			PlayerScripts.RegisterTouchCameraMovementMode(Enum.TouchCameraMovementMode.Classic);
+
+			PlayerScripts.RegisterComputerCameraMovementMode(Enum.ComputerCameraMovementMode.Default);
+			PlayerScripts.RegisterComputerCameraMovementMode(Enum.ComputerCameraMovementMode.Follow);
+			PlayerScripts.RegisterComputerCameraMovementMode(Enum.ComputerCameraMovementMode.Classic);
+			PlayerScripts.RegisterComputerCameraMovementMode(Enum.ComputerCameraMovementMode.CameraToggle);
+		}
+
 		// Adds CharacterAdded and CharacterRemoving event handlers for all current players
 		Players.GetPlayers().forEach(player => this.OnPlayerAdded(player));
 
@@ -186,6 +187,7 @@ export class CameraModule {
 				|| legacyCameraType === Enum.CameraType.Watch
 				|| legacyCameraType === Enum.CameraType.Fixed) {
 				// newCameraCreator = LegacyCamera;
+				print("LegacyCamera");
 			} else {
 				warn("CameraScript encountered an unhandled Camera.CameraType value. ", legacyCameraType);
 			}
@@ -194,15 +196,18 @@ export class CameraModule {
 		if (!newCameraCreator) {
 			if (VRService.VREnabled) {
 				// newCameraCreator = VRCamera;
+				print("VRCamera");
 			} else if (cameraMovementMode === Enum.ComputerCameraMovementMode.Classic ||
 				cameraMovementMode === Enum.ComputerCameraMovementMode.Follow ||
 				cameraMovementMode === Enum.ComputerCameraMovementMode.Default ||
 				cameraMovementMode === Enum.ComputerCameraMovementMode.CameraToggle) {
 				newCameraCreator = ClassicCamera;
+				print("ClassicCamera");
 			} else if (cameraMovementMode === Enum.ComputerCameraMovementMode.Orbital) {
-				// newCameraCreator = OrbitalCamera;
+				newCameraCreator = OrbitalCamera;
+				print("OrbitalCamera");
 			} else {
-				warn("ActivateCameraController did !select a module.");
+				warn("ActivateCameraController did not select a module.");
 				return;
 			}
 		}
@@ -212,8 +217,10 @@ export class CameraModule {
 		if (isVehicleCamera) {
 			if (VRService.VREnabled) {
 				// newCameraCreator = VRVehicleCamera;
+				print("VRVehicleCamera");
 			} else {
 				// newCameraCreator = VehicleCamera;
+				print("VehicleCamera");
 			}
 		}
 
@@ -382,10 +389,11 @@ export class CameraModule {
 
 				this.activeOcclusionModule.OnCameraSubjectChanged((game.Workspace.CurrentCamera as Camera).CameraSubject);
 			}
-
-			// Activate new choice
-			this.activeOcclusionModule.Enable(true);
 		}
+
+		print(this.activeOcclusionModule);
+		// Activate new choice
+		this.activeOcclusionModule.Enable(true);
 	}
 
 	/**
@@ -445,7 +453,10 @@ export class CameraModule {
 		if (this.activeCameraController) {
 			this.activeCameraController.UpdateMouseBehavior();
 
-			const [newCameraCFrame, newCameraFocus] = this.activeCameraController.Update(dt);
+			let [newCameraCFrame, newCameraFocus] = this.activeCameraController.Update(dt);
+
+			if (this.activeOcclusionModule)
+				[newCameraCFrame, newCameraFocus] = this.activeOcclusionModule.Update(dt, newCameraCFrame, newCameraFocus);
 
 			// Here is where the new CFrame and Focus are set for this render frame
 			const currentCamera = Workspace.CurrentCamera as Camera;
@@ -481,18 +492,18 @@ export class CameraModule {
 				} else {
 					warn("Unhandled value for property player.CameraMode: ", Players.LocalPlayer.CameraMode);
 				}
-				
+
 				break;
 			case "DevComputerCameraMode":
 			case "DevTouchCameraMode":
 				// eslint-disable-next-line no-case-declarations
 				const cameraMovementMode = this.GetCameraMovementModeFromSettings();
 				this.ActivateCameraController(CameraUtils.ConvertCameraModeEnumToStandard(cameraMovementMode));
-				
+
 				break;
 			case "DevCameraOcclusionMode":
 				this.ActivateOcclusionModule(Players.LocalPlayer.DevCameraOcclusionMode);
-				
+
 				break;
 			case "DevTouchMovementMode":
 				break;

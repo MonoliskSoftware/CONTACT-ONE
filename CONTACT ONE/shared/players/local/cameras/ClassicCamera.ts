@@ -19,7 +19,6 @@ export class ClassicCamera extends BaseCamera {
 	isFollowCamera = false;
 	lastUpdate = tick();
 	cameraToggleSpring = new CameraUtils.Spring(5, 0);
-	lastCameraFocus: CFrame | undefined;
 
 	Update(dt: number) {
 		const now = tick();
@@ -209,5 +208,9 @@ export class ClassicCamera extends BaseCamera {
 		}
 
 		return Vector3.zero;
+	}
+
+	GetModuleName(): string {
+		return "ClassicCamera";
 	}
 }

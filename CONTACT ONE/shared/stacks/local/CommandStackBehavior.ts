@@ -1,4 +1,5 @@
-import { ContextActionService, RunService, Workspace } from "@rbxts/services";
+import { RunService, Workspace } from "@rbxts/services";
+import { dict } from "CORP/shared/Libraries/Utilities";
 import { NetworkVariable } from "CORP/shared/Scripts/Networking/NetworkVariable";
 import { StackBehavior } from "./StackBehavior";
 
@@ -34,8 +35,8 @@ class CommandStackCameraModule {
 
 	private onRenderStep(deltaTime: number) {
 		if (this.camera) {
-			this.camera.CameraType = Enum.CameraType.Orbital;
-			this.camera.Focus = new CFrame(this.focusPoint);
+			// this.camera.CameraType = Enum.CameraType.Orbital;
+			this.camera.CameraSubject = ((Workspace as dict).SpawnLocation as BasePart);
 			// this.camera.CFrame = CFrame.lookAt(this.focusPoint.sub(this.lookDirection.mul(this.distance)), this.focusPoint);
 		}
 	}
@@ -62,9 +63,9 @@ class CommandStackCameraModule {
 	constructor() {
 		warn("AYYY");
 		if (RunService.IsClient()) {
-			ContextActionService.BindActionAtPriority("ChangeCommandStackCameraDistance", (actionName: string, inputState: Enum.UserInputState, inputObject: InputObject) => this.handleAction(actionName, inputState, inputObject), false, Enum.ContextActionPriority.High.Value, Enum.UserInputType.MouseWheel);
-			ContextActionService.BindActionAtPriority("MoveCommandStackCamera", (actionName: string, inputState: Enum.UserInputState, inputObject: InputObject) => this.handleAction(actionName, inputState, inputObject), false, Enum.ContextActionPriority.High.Value, Enum.UserInputType.MouseMovement);
-			ContextActionService.BindActionAtPriority("ToggleCommandStackCameraMovement", (actionName: string, inputState: Enum.UserInputState, inputObject: InputObject) => this.handleAction(actionName, inputState, inputObject), false, Enum.ContextActionPriority.High.Value, Enum.UserInputType.MouseButton2);
+			// ContextActionService.BindActionAtPriority("ChangeCommandStackCameraDistance", (actionName: string, inputState: Enum.UserInputState, inputObject: InputObject) => this.handleAction(actionName, inputState, inputObject), false, Enum.ContextActionPriority.High.Value, Enum.UserInputType.MouseWheel);
+			// ContextActionService.BindActionAtPriority("MoveCommandStackCamera", (actionName: string, inputState: Enum.UserInputState, inputObject: InputObject) => this.handleAction(actionName, inputState, inputObject), false, Enum.ContextActionPriority.High.Value, Enum.UserInputType.MouseMovement);
+			// ContextActionService.BindActionAtPriority("ToggleCommandStackCameraMovement", (actionName: string, inputState: Enum.UserInputState, inputObject: InputObject) => this.handleAction(actionName, inputState, inputObject), false, Enum.ContextActionPriority.High.Value, Enum.UserInputType.MouseButton2);
 		}
 
 	}

@@ -20,7 +20,7 @@ function getTotalTransparency(part: BasePart) {
 }
 
 function eraseFromEnd(t: defined[], toSize: number) {
-	for (let i = t.size() - 1; i >= toSize; i) {
+	for (let i = t.size() - 1; i >= toSize; i--) {
 		t[i] = undefined as unknown as defined;
 	}
 }
@@ -369,7 +369,7 @@ function testPromotion(focus: CFrame, dist: number, focusExtrapolation: Extrapol
 		// Metric that decides how many samples to take
 		const combinedSpeed = focusExtrapolation.posVelocity.Magnitude;
 
-		for (let dt = 0; dt <= math.min(SAMPLE_MAX_T, focusExtrapolation.rotVelocity.Magnitude + maxDist / combinedSpeed); SAMPLE_DT) {
+		for (let dt = 0; dt <= math.min(SAMPLE_MAX_T, focusExtrapolation.rotVelocity.Magnitude + maxDist / combinedSpeed); dt += SAMPLE_DT) {
 			const cfDt = focusExtrapolation.extrapolate(dt); // Extrapolated CFrame at time dt
 
 			if (queryPoint(cfDt.Position, cfDt.LookVector.mul(-1), dist)[0] >= dist)

@@ -1,4 +1,4 @@
-import { Players } from "@rbxts/services";
+import { Players, RunService } from "@rbxts/services";
 import { Popper } from "./Popper";
 import { Extrapolation } from "./Poppercam";
 
@@ -56,24 +56,22 @@ class ConstrainedSpring {
 	}
 }
 
-let cameraMinZoomDistance: number;
-let cameraMaxZoomDistance: number;
+let cameraMinZoomDistance = 0;
+let cameraMaxZoomDistance = 0;
 
-const Player = Players.LocalPlayer;
+if (RunService.IsClient()) {
+	const Player = Players.LocalPlayer;
 
-function updateBounds() {
-	cameraMinZoomDistance = Player.CameraMinZoomDistance;
-	cameraMaxZoomDistance = Player.CameraMaxZoomDistance;
-}
+	const updateBounds = () => {
+		cameraMinZoomDistance = Player.CameraMinZoomDistance;
+		cameraMaxZoomDistance = Player.CameraMaxZoomDistance;
+	};
 
-if (Player) {
 	updateBounds();
-	
+
 	Player.GetPropertyChangedSignal("CameraMinZoomDistance").Connect(updateBounds);
 	Player.GetPropertyChangedSignal("CameraMaxZoomDistance").Connect(updateBounds);
 }
-
-
 
 const ZOOM_STIFFNESS = 4.5;
 const ZOOM_DEFAULT = 12.5;
@@ -81,8 +79,6 @@ const ZOOM_ACCELERATION = 0.0375;
 
 const MIN_FOCUS_DIST = 0.5;
 const DIST_OPAQUE = 1;
-
-const zoomSpring = new ConstrainedSpring(ZOOM_STIFFNESS, ZOOM_DEFAULT, MIN_FOCUS_DIST, cameraMaxZoomDistance);
 
 function stepTargetZoom(z: number, dz: number, zoomMin: number, zoomMax: number) {
 	z = math.clamp(z + dz * (1 + z * ZOOM_ACCELERATION), zoomMin, zoomMax);
@@ -96,15 +92,22 @@ function stepTargetZoom(z: number, dz: number, zoomMin: number, zoomMax: number)
 
 let zoomDelta = 0;
 
-export namespace Zoom {
-	export function Update(renderDt: number, focus: CFrame, extrapolation: Extrapolation) {
+export class ZoomController {
+	public static readonly singleton = new ZoomController();
+	private zoomSpring = RunService.IsClient() ? new ConstrainedSpring(ZOOM_STIFFNESS, ZOOM_DEFAULT, MIN_FOCUS_DIST, cameraMaxZoomDistance) : undefined as unknown as ConstrainedSpring;
+
+	constructor() {
+		if (RunService.IsServer()) return undefined as unknown as ZoomController;
+	}
+
+	Update(renderDt: number, focus: CFrame, extrapolation: Extrapolation) {
 		let poppedZoom = math.huge;
 
-		if (zoomSpring.goal > DIST_OPAQUE) {
+		if (this.zoomSpring.goal > DIST_OPAQUE) {
 			// Make a pessimistic estimate of zoom distance for this step without accounting for poppercam
 			const maxPossibleZoom = math.max(
-				zoomSpring.x,
-				stepTargetZoom(zoomSpring.goal, zoomDelta, cameraMinZoomDistance, cameraMaxZoomDistance)
+				this.zoomSpring.x,
+				stepTargetZoom(this.zoomSpring.goal, zoomDelta, cameraMinZoomDistance, cameraMaxZoomDistance)
 			);
 
 			// Run the Popper algorithm on the feasible zoom range, [MIN_FOCUS_DIST, maxPossibleZoom]
@@ -115,23 +118,23 @@ export namespace Zoom {
 			) + MIN_FOCUS_DIST;
 		}
 
-		zoomSpring.minValue = MIN_FOCUS_DIST;
-		zoomSpring.maxValue = math.min(cameraMaxZoomDistance, poppedZoom);
+		this.zoomSpring.minValue = MIN_FOCUS_DIST;
+		this.zoomSpring.maxValue = math.min(cameraMaxZoomDistance, poppedZoom);
 
-		return zoomSpring.Step(renderDt);
+		return this.zoomSpring.Step(renderDt);
 	}
 
-	export function GetZoomRadius() {
-		return zoomSpring.x;
+	GetZoomRadius() {
+		return this.zoomSpring.x;
 	}
 
-	export function SetZoomParameters(targetZoom: number, newZoomDelta: number) {
-		zoomSpring.goal = targetZoom;
+	SetZoomParameters(targetZoom: number, newZoomDelta: number) {
+		this.zoomSpring.goal = targetZoom;
 		zoomDelta = newZoomDelta;
 	}
 
-	export function ReleaseSpring() {
-		zoomSpring.x = zoomSpring.goal;
-		zoomSpring.v = 0;
+	ReleaseSpring() {
+		this.zoomSpring.x = this.zoomSpring.goal;
+		this.zoomSpring.v = 0;
 	}
 }
