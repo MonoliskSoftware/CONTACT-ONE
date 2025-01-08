@@ -24,6 +24,10 @@ class CommandStackCameraModule {
 		RunService.BindToRenderStep("UpdateCommandStackCameraModule", Enum.RenderPriority.Camera.Value, deltaTime => this.onRenderStep(deltaTime));
 
 		this.activated = true;
+
+		if (this.camera) {
+			this.camera.CameraType = Enum.CameraType.Orbital;
+		}
 	}
 
 	public deactivate() {
@@ -35,9 +39,7 @@ class CommandStackCameraModule {
 
 	private onRenderStep(deltaTime: number) {
 		if (this.camera) {
-			// this.camera.CameraType = Enum.CameraType.Orbital;
 			this.camera.CameraSubject = ((Workspace as dict).SpawnLocation as BasePart);
-			// this.camera.CFrame = CFrame.lookAt(this.focusPoint.sub(this.lookDirection.mul(this.distance)), this.focusPoint);
 		}
 	}
 
