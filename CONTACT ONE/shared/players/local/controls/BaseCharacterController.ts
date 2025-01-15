@@ -4,7 +4,7 @@ import { ConnectionUtil } from "../ConnectionUtil";
  * Abstract base class for character controllers, not intended to be directly instantiated.
  */
 export abstract class BaseCharacterController {
-	protected enabled = false;
+	public enabled = false;
 	protected moveVector = Vector3.zero;
 	protected moveVectorIsCameraRelative = true;
 	protected isJumping = false;
@@ -26,5 +26,5 @@ export abstract class BaseCharacterController {
 	 * Override in derived classes to set this.enabled and return boolean indicating
 	 * whether Enable/Disable was successful. Return true if controller is already in the requested state. 
 	 */
-	abstract Enable(enable: boolean): boolean
+	abstract Enable(enable: boolean, uiParentFrame?: Frame): boolean
 }

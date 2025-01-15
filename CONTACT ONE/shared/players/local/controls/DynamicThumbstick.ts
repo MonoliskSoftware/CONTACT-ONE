@@ -4,7 +4,7 @@ import { ContextActionService, GuiService, Players, RunService, TweenService, Us
 import { FlagUtil } from "../FlagUtil";
 import { BaseCharacterController } from "./BaseCharacterController";
 
-//[[ Constants ]]//
+//[[ Constants ]]
 const ZERO_VECTOR3 = new Vector3(0, 0, 0);
 const TOUCH_CONTROLS_SHEET = "rbxasset://textures/ui/Input/TouchControlsSheetV2.png";
 

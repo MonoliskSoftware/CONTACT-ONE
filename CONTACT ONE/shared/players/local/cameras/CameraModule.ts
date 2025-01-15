@@ -64,7 +64,8 @@ export class CameraModule {
 	private static readonly instantiatedOcclusionModules = new Map<Constructable<BaseOcclusion>, BaseOcclusion>();
 
 	// Current active controller instances
-	private activeCameraController: BaseCamera | undefined;
+	activeCameraController: BaseCamera | undefined;
+	
 	private activeOcclusionModule: BaseOcclusion | undefined;
 	private activeTransparencyController: TransparencyController | undefined;
 	private activeMouseLockController: MouseLockController | undefined;

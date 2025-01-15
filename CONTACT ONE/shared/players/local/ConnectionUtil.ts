@@ -1,3 +1,7 @@
+import { Connection } from "CORP/shared/Libraries/Signal";
+
+type ConnectionTypes<T extends unknown[]> = RBXScriptConnection | Connection<T>
+
 /**
  * Utility module for handling RBXScriptConnections. This module is used to track connections and disconnect them when needed.
  */
@@ -5,14 +9,14 @@ export class ConnectionUtil {
 	_connections = new Map<string, () => void>();
 
 	/**
-	 * Connect with an RBXScripConnection
+	 * Connect with an RBXScriptConnection
 	 */
-	trackConnection(key: string, connection: RBXScriptConnection): void {
+	trackConnection<T extends unknown[]>(key: string, connection: ConnectionTypes<T>): void {
 		const disconnectionFunc = this._connections.get(key);
 
 		if (disconnectionFunc) disconnectionFunc(); // Disconnect existing connection
 		// store the disconnect function
-		this._connections.set(key, () => connection.Disconnect());
+		this._connections.set(key, () => (connection as { Disconnect: () => void }).Disconnect());
 	}
 
 	/**

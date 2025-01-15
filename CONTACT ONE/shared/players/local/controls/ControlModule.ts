@@ -3,7 +3,9 @@ import { FlagUtil } from "CONTACT ONE/shared/players/local/FlagUtil";
 import { Constructable } from "CORP/shared/Libraries/Utilities";
 import { BaseCharacterController } from "./BaseCharacterController";
 import { DynamicThumbstick } from "./DynamicThumbstick";
+import { Gamepad } from "./Gamepad";
 import { Keyboard } from "./Keyboard";
+import { TouchJump } from "./TouchJump";
 
 const FFlagUserDynamicThumbstickSafeAreaUpdate = FlagUtil.getUserFlag("UserDynamicThumbstickSafeAreaUpdate");
 
@@ -19,12 +21,12 @@ const movementEnumToModuleMap = {
 	[Enum.DevTouchMovementMode.DPad as never]: DynamicThumbstick,
 	[Enum.TouchMovementMode.Thumbpad as never]: DynamicThumbstick,
 	[Enum.DevTouchMovementMode.Thumbpad as never]: DynamicThumbstick,
-	[Enum.TouchMovementMode.Thumbstick as never]: TouchThumbstick,
-	[Enum.DevTouchMovementMode.Thumbstick as never]: TouchThumbstick,
+	// [Enum.TouchMovementMode.Thumbstick as never]: TouchThumbstick, TODO TOUCHTHUMBSTICK
+	// [Enum.DevTouchMovementMode.Thumbstick as never]: TouchThumbstick, TODO TOUCHTHUMBSTICK
 	[Enum.TouchMovementMode.DynamicThumbstick as never]: DynamicThumbstick,
 	[Enum.DevTouchMovementMode.DynamicThumbstick as never]: DynamicThumbstick,
-	[Enum.TouchMovementMode.ClickToMove as never]: ClickToMove,
-	[Enum.DevTouchMovementMode.ClickToMove as never]: ClickToMove,
+	// [Enum.TouchMovementMode.ClickToMove as never]: ClickToMove, TODO CLICKTOMOVE
+	// [Enum.DevTouchMovementMode.ClickToMove as never]: ClickToMove, TODO CLICKTOMOVE
 
 	// Current default
 	[Enum.TouchMovementMode.Default as never]: DynamicThumbstick,
@@ -33,8 +35,8 @@ const movementEnumToModuleMap = {
 	[Enum.ComputerMovementMode.KeyboardMouse as never]: Keyboard,
 	[Enum.DevComputerMovementMode.KeyboardMouse as never]: Keyboard,
 	[Enum.DevComputerMovementMode.Scriptable as never]: undefined,
-	[Enum.ComputerMovementMode.ClickToMove as never]: ClickToMove,
-	[Enum.DevComputerMovementMode.ClickToMove as never]: ClickToMove,
+	// [Enum.ComputerMovementMode.ClickToMove as never]: ClickToMove, TODO CLICKTOMOVE
+	// [Enum.DevComputerMovementMode.ClickToMove as never]: ClickToMove, TODO CLICKTOMOVE
 };
 
 // Keyboard controller is really keyboard && mouse controller
@@ -91,7 +93,7 @@ export class ControlModule {
 	 */
 	controllers = new Map<Constructable<BaseCharacterController>, BaseCharacterController>();
 
-	activeControlModule: BaseCharacterController | undefined; // Used to prevent unnecessarily expensive checks on each input event
+	activeControlModule: Constructable<BaseCharacterController> | undefined; // Used to prevent unnecessarily expensive checks on each input event
 	activeController: BaseCharacterController | undefined;
 	touchJumpController: TouchJump | undefined;
 	moveFunction: ((player: Player, direction: Vector3, cameraRelative: boolean) => void) | undefined;
@@ -102,7 +104,7 @@ export class ControlModule {
 	 * For Roblox this.vehicleController
 	 */
 	humanoidSeatedConn: RBXScriptConnection | undefined;
-	vehicleController: RBXVehicleController | undefined;
+	// vehicleController: RBXVehicleController | undefined; // TODO VEHICLECONTROLLER
 
 	touchControlFrame: Frame | undefined;
 	currentTorsoAngle = 0;
@@ -225,7 +227,7 @@ export class ControlModule {
 	UpdateActiveControlModuleEnabled() {
 		// helpers for disable/enable
 		const disable = () => {
-			this.activeController.Enable(false);
+			this.activeController?.Enable(false);
 
 			if (this.touchJumpController) this.touchJumpController.Enable(false);
 			if (this.moveFunction) this.moveFunction(Players.LocalPlayer, Vector3.zero, true);
@@ -235,12 +237,12 @@ export class ControlModule {
 			if (
 				this.touchControlFrame
 				&& (
-					this.activeControlModule === ClickToMove
-					|| this.activeControlModule === TouchThumbstick
-					|| this.activeControlModule === DynamicThumbstick
+					/*this.activeControlModule === ClickToMove
+					|| this.activeControlModule === TouchThumbstick // TODO CLICKTOMOVE TOUCHTHUMBSTICK
+					|| */this.activeControlModule === DynamicThumbstick
 				)
 			) {
-				if (!this.controllers.has(TouchJump)) this.controllers.set(TouchJump, TouchJump.new());
+				if (!this.controllers.has(TouchJump)) this.controllers.set(TouchJump, new TouchJump());
 
 				this.touchJumpController = this.controllers.get(TouchJump) as TouchJump;
 				this.touchJumpController.Enable(true, this.touchControlFrame);
@@ -250,7 +252,9 @@ export class ControlModule {
 				}
 			}
 
-			if (this.activeControlModule === ClickToMove) {
+			assert(this.activeController);
+
+			/*if (this.activeControlModule === ClickToMove) {
 				// For ClickToMove, when it is the player's choice, we also enable the full keyboard controls.
 				// When the developer is forcing click to move, the most keyboard controls (WASD) are !available, only jump.
 				this.activeController.Enable(
@@ -258,7 +262,7 @@ export class ControlModule {
 					Players.LocalPlayer.DevComputerMovementMode === Enum.DevComputerMovementMode.UserChoice,
 					this.touchJumpController
 				);
-			} else if (this.touchControlFrame) {
+			} else */if (this.touchControlFrame) {
 				this.activeController.Enable(true, this.touchControlFrame);
 			} else {
 				this.activeController.Enable(true);
@@ -279,8 +283,8 @@ export class ControlModule {
 		// GuiService.TouchControlsEnabled ===false && the active controller is a touch controller,
 		// disable controls
 		if (!GuiService.TouchControlsEnabled && UserInputService.TouchEnabled &&
-			(this.activeControlModule === ClickToMove || this.activeControlModule === TouchThumbstick ||
-				this.activeControlModule === DynamicThumbstick)) {
+			(/*this.activeControlModule === ClickToMove || this.activeControlModule === TouchThumbstick ||*/
+				this.activeControlModule === DynamicThumbstick)) { // TODO CLICKTOMOVE TOUCHTHUMBSTICK
 			disable();
 			return;
 		}
@@ -311,22 +315,22 @@ export class ControlModule {
 
 
 	// Returns module (possibly undefined) && success code to differentiate returning undefined due to error vs Scriptable
-	SelectComputerMovementModule(): [object | undefined, boolean] {
+	SelectComputerMovementModule(): [Constructable<BaseCharacterController> | undefined, boolean] {
 		if (!(UserInputService.KeyboardEnabled || UserInputService.GamepadEnabled)) {
 			return [undefined, false];
 		}
 
-		let computerModule;
+		let computerModule: Constructable<BaseCharacterController> | undefined;
 
 		const DevMovementMode = Players.LocalPlayer.DevComputerMovementMode;
 
 		if (DevMovementMode === Enum.DevComputerMovementMode.UserChoice) {
 			computerModule = computerInputTypeToModuleMap[lastInputType as never];
 			// User has ClickToMove set in Settings, prefer ClickToMove controller for keyboard && mouse lastInputTypes
-			if (UserGameSettings.ComputerMovementMode === Enum.ComputerMovementMode.ClickToMove && computerModule === Keyboard) computerModule = ClickToMove;
+			// if (UserGameSettings.ComputerMovementMode === Enum.ComputerMovementMode.ClickToMove && computerModule === Keyboard) computerModule = ClickToMove; // TODO CLICKTOMOVE
 		} else {
 			// Developer has selected a mode that must be used.
-			computerModule = movementEnumToModuleMap[DevMovementMode as never];
+			computerModule = movementEnumToModuleMap[DevMovementMode as never] as Constructable<BaseCharacterController>;
 
 			// computerModule is expected to be undefined here only when developer has selected Scriptable
 			if ((!computerModule) && DevMovementMode !== Enum.DevComputerMovementMode.Scriptable) {
@@ -348,7 +352,7 @@ export class ControlModule {
 
 	// Choose current Touch control module based on settings (user, dev)
 	// Returns module (possibly undefined) && success code to differentiate returning undefined due to error vs Scriptable
-	SelectTouchModule(): [object | undefined, boolean] {
+	SelectTouchModule(): [Constructable<BaseCharacterController> | undefined, boolean] {
 		if (!UserInputService.TouchEnabled) {
 			return [undefined, false];
 		}
@@ -438,14 +442,16 @@ export class ControlModule {
 
 			// Now retrieve info from the controller
 			let moveVector = this.activeController.GetMoveVector();
-			let cameraRelative = this.activeController.IsMoveVectorCameraRelative();
 
+			const cameraRelative = this.activeController.IsMoveVectorCameraRelative();
+
+			/*
 			const clickToMoveController = this.GetClickToMoveController();
 
 			if (this.activeController === clickToMoveController) {
 				clickToMoveController.OnRenderStepped(dt);
 			} else {
-				if (moveVector.magnitude > 0) {
+				if (moveVector.Magnitude > 0) {
 					// Clean up any developer started MoveTo path
 					clickToMoveController.CleanupPath();
 				} else {
@@ -455,11 +461,13 @@ export class ControlModule {
 					cameraRelative = clickToMoveController.IsMoveVectorCameraRelative();
 				}
 			}
+			*/ // TODO CLICKTOMOVE
 
 			// Are we driving a vehicle ?
+			/*
 			let vehicleConsumedInput = false;
 
-			if (this.vehicleController) [moveVector, vehicleConsumedInput] = this.vehicleController.Update(moveVector, cameraRelative, this.activeControlModule === Gamepad);
+			if (this.vehicleController) [moveVector, vehicleConsumedInput] = this.vehicleController.Update(moveVector, cameraRelative, this.activeControlModule === Gamepad);*/ // TODO VEHICLECONTROLLER
 
 			// If not, move the player
 			// Verification of vehicleConsumedInput is commented out to preserve legacy behavior,
@@ -476,7 +484,7 @@ export class ControlModule {
 			//}
 
 			// && make them jump if ( needed
-			this.humanoid.Jump = this.activeController.GetIsJumping() || (this.touchJumpController && this.touchJumpController.GetIsJumping());
+			this.humanoid.Jump = this.activeController.GetIsJumping() || (this.touchJumpController && this.touchJumpController.GetIsJumping()) || false;
 		}
 	}
 
@@ -510,7 +518,7 @@ export class ControlModule {
 	}
 
 	OnHumanoidSeated(active: boolean, currentSeatPart: BasePart | undefined) {
-		if (active) {
+		/* if (active) {
 			if (currentSeatPart && currentSeatPart.IsA("VehicleSeat")) {
 				if (!this.vehicleController) this.vehicleController = this.vehicleController.new(CONTROL_ACTION_PRIORITY);
 
@@ -518,7 +526,7 @@ export class ControlModule {
 			}
 		} else {
 			if (this.vehicleController) this.vehicleController.Enable(false, currentSeatPart);
-		}
+		}*/ // TODO VEHICLECONTROLLER
 	}
 
 	OnCharacterAdded(char: Model) {
@@ -562,7 +570,7 @@ export class ControlModule {
 
 	// This function should handle all controller enabling and disabling without relying on
 	// ControlModule:Enable() and Disable()
-	SwitchToController(controlModule: BaseCharacterController) {
+	SwitchToController(controlModule: Constructable<BaseCharacterController>) {
 		// controlModule is invalid, just disable current controller
 		if (!controlModule) {
 			if (this.activeController) this.activeController.Enable(false);
@@ -574,7 +582,7 @@ export class ControlModule {
 		}
 
 		// first time switching to this control module, should instantiate it
-		if (!this.controllers.has(controlModule)) this.controllers.set(controlModule, controlModule.new(CONTROL_ACTION_PRIORITY));
+		if (!this.controllers.has(controlModule)) this.controllers.set(controlModule, new controlModule(CONTROL_ACTION_PRIORITY));
 
 		// switch to the new controlModule
 		if (this.activeController !== this.controllers.get(controlModule)) {
@@ -601,10 +609,10 @@ export class ControlModule {
 			if (success) {
 				while (!this.touchControlFrame) task.wait();
 
-				this.SwitchToController(touchModule);
+				this.SwitchToController(touchModule as Constructable<BaseCharacterController>);
 			}
 		} else if (computerInputTypeToModuleMap[lastInputType as never] !== undefined) {
-			const computerModule = this.SelectComputerMovementModule();
+			const [computerModule] = this.SelectComputerMovementModule();
 
 			if (computerModule) {
 				this.SwitchToController(computerModule);
@@ -620,7 +628,7 @@ export class ControlModule {
 		const [controlModule, success] = this.SelectComputerMovementModule();
 
 		if (success) {
-			this.SwitchToController(controlModule);
+			this.SwitchToController(controlModule as Constructable<BaseCharacterController>);
 		}
 	}
 
@@ -631,7 +639,7 @@ export class ControlModule {
 			while (!this.touchControlFrame) {
 				wait();
 			}
-			this.SwitchToController(touchModule);
+			this.SwitchToController(touchModule as Constructable<BaseCharacterController>);
 		}
 	}
 
@@ -661,10 +669,10 @@ export class ControlModule {
 	}
 
 	GetClickToMoveController() {
-		if (!this.controllers.has(ClickToMove)) {
+		/*if (!this.controllers.has(ClickToMove)) {
 			this.controllers.set(ClickToMove, new ClickToMove(CONTROL_ACTION_PRIORITY));
 		}
 
-		return this.controllers.get(ClickToMove);
+		return this.controllers.get(ClickToMove);*/ // TODO CLICKTOMOVE
 	}
 }
