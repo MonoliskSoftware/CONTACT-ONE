@@ -1,4 +1,5 @@
 import { NetworkVariable } from "CORP/shared/Scripts/Networking/NetworkVariable";
+import { GameStack } from "../StackManager";
 import { BaseElement } from "./BaseElement";
 import { CommandUnit } from "./CommandUnit";
 
@@ -15,21 +16,10 @@ export class BattleUnit extends BaseElement {
 
 	private lastParent: CommandUnit | BattleUnit | undefined;
 
-	private applyParent() {
-		const newParent = this.parent.getValue();
-
-		if (this.lastParent) 
-			this.lastParent.subordinates.remove(this.lastParent.subordinates.indexOf(this));
-
-		newParent.subordinates.push(this);
-
-		this.lastParent = this.parent.getValue();
-	}
-
 	public onStart(): void {
-		this.applyParent();
+		this.applyAncestry();
 
-		this.parent.onValueChanged.connect(parent => this.applyParent());
+		this.parent.onValueChanged.connect(parent => this.applyAncestry());
 	}
 
 	public willRemove(): void {
@@ -38,5 +28,29 @@ export class BattleUnit extends BaseElement {
 
 	protected getSourceScript(): ModuleScript {
 		return script as ModuleScript;
+	}
+
+	private applyAncestry() {
+		const newParent = this.parent.getValue();
+
+		if (newParent !== this.lastParent) {
+			this.lastParent?.subordinateOnRemoved(this);
+
+			newParent?.subordinateOnAdded(this);
+
+			this.lastParent = this.parent.getValue();
+		}
+	}
+
+	public subordinateOnAdded(subordinate: BattleUnit) {
+		if (!this.subordinates.includes(subordinate)) this.subordinates.push(subordinate); 
+	}
+
+	public subordinateOnRemoved(subordinate: BattleUnit) {
+		this.subordinates.remove(this.subordinates.indexOf(subordinate));
+	}
+
+	getStack(): GameStack {
+		return GameStack.BATTLE_STACK;
 	}
 }
