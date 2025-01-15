@@ -3,12 +3,12 @@ import { GameObject } from "../Scripts/Componentization/GameObject";
 import { ExtractNetworkVariables, NetworkBehavior } from "../Scripts/Networking/NetworkBehavior";
 import { Networking } from "../Scripts/Networking/Networking";
 import { NetworkObject } from "../Scripts/Networking/NetworkObject";
-import { GamePlayer } from "./GamePlayer";
+import { PlayerBehavior } from "./PlayerBehavior";
 
 export class PlayerManager extends NetworkBehavior {
 	private static singleton: PlayerManager;
 	
-	private players = new Map<Player, GamePlayer>();
+	private players = new Map<Player, PlayerBehavior>();
 
 	constructor(gameObject: GameObject) {
 		super(gameObject);
@@ -16,17 +16,17 @@ export class PlayerManager extends NetworkBehavior {
 		PlayerManager.singleton = this;
 	}
 
-	private createGamePlayer(player: Player) {
+	private createPlayerBehavior(player: Player) {
 		const gameObject = new GameObject();
 
 		gameObject.setName(player.Name);
 		gameObject.setParent(this.getGameObject());
-		gameObject.addComponent(NetworkObject);
+		gameObject.addComponent(NetworkObject).changeOwnership(player);
 
-		return gameObject.addComponent(GamePlayer, {
+		return gameObject.addComponent(PlayerBehavior, {
 			initialNetworkVariableStates: ({
 				player: player
-			} satisfies ExtractNetworkVariables<GamePlayer> as unknown as Map<string, Networking.NetworkableTypes>)
+			} satisfies ExtractNetworkVariables<PlayerBehavior> as unknown as Map<string, Networking.NetworkableTypes>)
 		});
 	}
 	
@@ -34,7 +34,7 @@ export class PlayerManager extends NetworkBehavior {
 		if (RunService.IsServer()) {
 			Players.CharacterAutoLoads = false;
 
-			Players.PlayerAdded.Connect(player => this.players.set(player, this.createGamePlayer(player)));
+			Players.PlayerAdded.Connect(player => this.players.set(player, this.createPlayerBehavior(player)));
 		}
 	}
 
