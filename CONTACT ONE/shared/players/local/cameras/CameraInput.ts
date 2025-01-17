@@ -146,7 +146,7 @@ export namespace CameraInput {
 	} satisfies InputStateObject;
 
 	export const onGamepadZoomPress = new Signal<[]>("gamepadZoomPress");
-	export const onGamepadReset = VRService.VREnabled && new Signal<[]>("gamepadReset");
+	export const onGamepadReset = VRService.VREnabled ? new Signal<[]>("gamepadReset") : undefined;
 
 	export function incPanInputCount() {
 		panInputCount = math.max(0, panInputCount + 1);
