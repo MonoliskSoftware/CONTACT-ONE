@@ -14,11 +14,14 @@ export class CommandUnit extends BaseElement {
 	public readonly parent = new NetworkVariable<Faction | CommandUnit>(this, undefined as unknown as Faction);
 
 	private lastParent: Faction | CommandUnit | undefined;
+	private lastController: BaseController | undefined;
 
 	public onStart(): void {
 		this.applyAncestry();
 
 		this.parent.onValueChanged.connect(() => this.applyAncestry());
+		this.controller.onValueChanged.connect(() => this.applyController());
+
 	}
 
 	public willRemove(): void {
@@ -41,6 +44,21 @@ export class CommandUnit extends BaseElement {
 			currentParent?.subordinateOnAdded(this);
 
 			this.lastParent = currentParent;
+		}
+	}
+
+	/**
+	 * Applies controller changes to NetworkVariables
+	 */
+	private applyController() {
+		const currentController = this.controller.getValue();
+
+		if (currentController !== this.lastController) {
+			this.lastController?.commandUnitOnCommandRemoved(this);
+
+			currentController?.commandUnitOnCommandTaken(this);
+
+			this.lastController = currentController;
 		}
 	}
 

@@ -1,18 +1,30 @@
-import { RunService, Workspace } from "@rbxts/services";
-import { dict } from "CORP/shared/Libraries/Utilities";
+import { Players, RunService, Workspace } from "@rbxts/services";
+import { CameraModule } from "CONTACT ONE/shared/players/local/cameras/CameraModule";
+import { CameraUtils } from "CONTACT ONE/shared/players/local/cameras/CameraUtils";
+import { ControlModule } from "CONTACT ONE/shared/players/local/controls/ControlModule";
 import { NetworkVariable } from "CORP/shared/Scripts/Networking/NetworkVariable";
+import { RPC, RPCAccessPolicy, RPCAllowedEndpoints } from "CORP/shared/Scripts/Networking/RPC";
 import { StackBehavior } from "./StackBehavior";
+
+const CommandStackViewerPath = "CONTACT ONE/assets/prefabs/CommandStackViewer";
+
+interface CommandStackViewer extends Model {
+	Root: Part,
+	CameraNode: Part
+}
+
+function lerp(a: number, b: number, alpha: number) {
+	return a + (b - a) * alpha;
+}
 
 class CommandStackCameraModule {
 	// Camera state data
 	private focusPoint = Vector3.zero;
-	private distance = 128;
-	private lookDirection = (new Vector3(1, -1, 1)).Unit;
-	private panning = false;
 
 	// Camera settings data
-	private focusPointBounds = new Region3(new Vector3(-1024, -512, -1024), new Vector3(1024, 512, 1024));
-	private distanceRange = new NumberRange(16, 512);
+	private readonly bounds = new Region3(new Vector3(-1024, -512, -1024), new Vector3(1024, 512, 1024));
+	private readonly distanceRange = new NumberRange(16, 512);
+	private readonly speedRange = new NumberRange(16, 64);
 
 	// Camera data
 	private camera = Workspace.CurrentCamera;
@@ -20,94 +32,114 @@ class CommandStackCameraModule {
 	// State
 	private activated = false;
 
+	// Info
+	private behavior: CommandStackBehavior;
+	private controlModule: ControlModule;
+	private cameraModule: CameraModule;
+
 	public activate() {
 		RunService.BindToRenderStep("UpdateCommandStackCameraModule", Enum.RenderPriority.Camera.Value, deltaTime => this.onRenderStep(deltaTime));
 
 		this.activated = true;
 
 		if (this.camera) {
-			this.camera.CameraType = Enum.CameraType.Orbital;
+			this.camera.CameraType = Enum.CameraType.Custom;
 		}
 	}
 
 	public deactivate() {
 		RunService.UnbindFromRenderStep("UpdateCommandStackCameraModule");
 
-		this.panning = false;
 		this.activated = false;
+	}
+
+	private getMoveVector() {
+		assert(this.camera);
+
+		const absolute = this.camera.CFrame.ToWorldSpace(CFrame.lookAt(Vector3.zero, this.controlModule.GetMoveVector())).LookVector.mul(new Vector3(1, 0, 1));
+
+		return !CameraUtils.IsFiniteVector3(absolute) ? Vector3.zero : absolute;
+	}
+
+	private getCurrentCameraDistance() {
+		return this.cameraModule.activeCameraController?.GetCameraToSubjectDistance() ?? 16;
+	}
+
+	private getDistanceFraction() {
+		const dist = this.getCurrentCameraDistance();
+
+		return (dist - this.distanceRange.Min) / (this.distanceRange.Max - this.distanceRange.Min);
+	}
+
+	private getCurrentSpeed() {
+		return lerp(this.speedRange.Min, this.speedRange.Max, this.getDistanceFraction());
+	}
+
+	private applyCameraDistance() {
+		Players.LocalPlayer.CameraMinZoomDistance = this.distanceRange.Min;
+		Players.LocalPlayer.CameraMaxZoomDistance = this.distanceRange.Max;
 	}
 
 	private onRenderStep(deltaTime: number) {
 		if (this.camera) {
-			this.camera.CameraSubject = ((Workspace as dict).SpawnLocation as BasePart);
+			const viewer = this.behavior.viewer.getValue();
+
+			this.camera.CameraSubject = viewer.CameraNode;
+
+			viewer.CameraNode.Position = viewer.CameraNode.Position.Lerp(viewer.Root.Position, deltaTime * 10);
+
+			this.behavior.updateViewerPosition(viewer.Root.Position.add(this.getMoveVector().mul(this.getCurrentSpeed())));
 		}
 	}
 
-	private handleAction(actionName: string, inputState: Enum.UserInputState, inputObject: InputObject) {
-		print(actionName, inputState, inputObject);
-
-		if (!this.activated) return Enum.ContextActionResult.Pass;
-
-		switch (actionName) {
-			case "ChangeCommandStackCameraDistance":
-				print(inputObject.Delta, inputObject.Position);
-				break;
-			case "ToggleCommandStackCameraMovement":
-				if (inputState === Enum.UserInputState.Begin || inputState === Enum.UserInputState.End || inputState === Enum.UserInputState.Cancel)
-					this.panning = inputState === Enum.UserInputState.Begin;
-
-				break;
-			case "MoveCommandStackCamera":
-				break;
-		}
-	}
-
-	constructor() {
-		warn("AYYY");
-		if (RunService.IsClient()) {
-			// ContextActionService.BindActionAtPriority("ChangeCommandStackCameraDistance", (actionName: string, inputState: Enum.UserInputState, inputObject: InputObject) => this.handleAction(actionName, inputState, inputObject), false, Enum.ContextActionPriority.High.Value, Enum.UserInputType.MouseWheel);
-			// ContextActionService.BindActionAtPriority("MoveCommandStackCamera", (actionName: string, inputState: Enum.UserInputState, inputObject: InputObject) => this.handleAction(actionName, inputState, inputObject), false, Enum.ContextActionPriority.High.Value, Enum.UserInputType.MouseMovement);
-			// ContextActionService.BindActionAtPriority("ToggleCommandStackCameraMovement", (actionName: string, inputState: Enum.UserInputState, inputObject: InputObject) => this.handleAction(actionName, inputState, inputObject), false, Enum.ContextActionPriority.High.Value, Enum.UserInputType.MouseButton2);
-		}
-
+	constructor(behavior: CommandStackBehavior) {
+		this.behavior = behavior;
+		this.controlModule = behavior.playerBehavior.getValue().getControlModule();
+		this.cameraModule = behavior.playerBehavior.getValue().getCameraModule();
 	}
 }
 
 export class CommandStackBehavior extends StackBehavior {
-	private cameraModule = new CommandStackCameraModule();
-	private readonly lookPart = new NetworkVariable<Part>(this, undefined as unknown as Part);
+	private cameraModule: CommandStackCameraModule = undefined as unknown as CommandStackCameraModule;
+	public readonly viewer = new NetworkVariable(this, undefined as unknown as CommandStackViewer);
+
+	@RPC.Method({
+		allowedEndpoints: RPCAllowedEndpoints.CLIENT_TO_SERVER,
+		accessPolicy: RPCAccessPolicy.OWNER
+	})
+	updateViewerPosition(position: Vector3) {
+		const model = this.viewer.getValue();
+		const result = Workspace.Raycast(new Vector3(position.X, 1024, position.Y), new Vector3(0, -1024, 0));
+		const final = new Vector3(position.X, result ? result.Position.Y : 8, position.Z);
+
+		model.Root.Position = final;
+	}
 
 	public onActivated(): void {
 		print("Command stack activating!");
 
 		if (RunService.IsServer()) {
-			this.gamePlayer.getValue().player.getValue().ReplicationFocus = this.lookPart.getValue();
+			this.playerBehavior.getValue().player.getValue().ReplicationFocus = this.viewer.getValue().PrimaryPart;
 		} else {
 			this.cameraModule.activate();
 		}
 	}
 
 	public willDeactivate(): void {
-		print("Command stack deactivating!");
-
 		if (RunService.IsClient())
 			this.cameraModule.deactivate();
 	}
 
 	public onStart(): void {
-		print("AIIGHY");
 		if (RunService.IsServer()) {
 			const model = this.getGameObject().getInstance();
 
-			model.AddPersistentPlayer(this.gamePlayer.getValue().player.getValue());
+			model.AddPersistentPlayer(this.playerBehavior.getValue().player.getValue());
 			model.ModelStreamingMode = Enum.ModelStreamingMode.PersistentPerPlayer;
 
-			const part = new Instance("Part");
-
-			part.Parent = model;
-			part.Anchored = true;
-
-			this.lookPart.setValue(part);
+			this.viewer.setValue(this.getGameObject().addInstancePrefabFromPath(CommandStackViewerPath));
+		} else {
+			this.cameraModule = new CommandStackCameraModule(this);
 		}
 	}
 
