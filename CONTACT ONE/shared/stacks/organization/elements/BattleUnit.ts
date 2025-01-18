@@ -1,20 +1,15 @@
-import { NetworkVariable } from "CORP/shared/Scripts/Networking/NetworkVariable";
-import { GameStack } from "../StackManager";
-import { BaseElement } from "./BaseElement";
+import { GameStack } from "../../StackManager";
 import { CommandUnit } from "./CommandUnit";
+import { Unit } from "./Unit";
 
 /**
  * Battle units compose the elements of Command units and other Battle units. The subordinates of 
  */
-export class BattleUnit extends BaseElement {
-	// Subordinates are not NetworkVariables because they are dependent on parents.
-	public readonly subordinates: BattleUnit[] = [];
-	/**
-	 * The parent of a Battle unit is used to define its hierarchy.
-	 */
-	public readonly parent = new NetworkVariable<CommandUnit | BattleUnit>(this, undefined as unknown as BattleUnit);
-
+export class BattleUnit extends Unit<BattleUnit | CommandUnit, BattleUnit> {
 	private lastParent: CommandUnit | BattleUnit | undefined;
+
+	public readonly stack = GameStack.BATTLE_STACK;
+	public readonly subordinates: BattleUnit[] = [];
 
 	public onStart(): void {
 		this.applyAncestry();
@@ -48,9 +43,5 @@ export class BattleUnit extends BaseElement {
 
 	public subordinateOnRemoved(subordinate: BattleUnit) {
 		this.subordinates.remove(this.subordinates.indexOf(subordinate));
-	}
-
-	getStack(): GameStack {
-		return GameStack.BATTLE_STACK;
 	}
 }

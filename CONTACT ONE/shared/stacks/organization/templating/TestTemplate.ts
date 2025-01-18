@@ -1,5 +1,6 @@
 import { GameStack } from "../../StackManager";
-import { UnitTemplate } from "./Templates";
+import { UnitProfiles } from "../UnitProfiles";
+import { UnitTemplates } from "./UnitTemplates";
 
 function merge<A, B>(a: A, b: B): A & B {
 	return {
@@ -8,63 +9,53 @@ function merge<A, B>(a: A, b: B): A & B {
 	};
 }
 
+// const MotorizedInfantryProfile = {
+// 	iconId: "rbxassetid://107010730765951",
+// 	unitType: "Motorized Infantry"
+// } satisfies UnitProfile;
+
 const MotorizedInfantrySquad = {
+	stack: GameStack.BATTLE_STACK,
 	subordinates: [],
-	stack: GameStack.BATTLE_STACK
-};
+	classProfile: UnitProfiles.USProfiles.MotorizedInfantry,
+	sizeProfile: UnitProfiles.USProfiles.Squad,
+} satisfies UnitTemplates.Template;
 
 const MotorizedInfantryPlatoon = {
-	name: "Motorized Infantry Platoon",
 	stack: GameStack.BATTLE_STACK,
 	subordinates: [
-		merge(MotorizedInfantrySquad, {
-			name: "Alpha Squad"
-		}),
-		merge(MotorizedInfantrySquad, {
-			name: "Bravo Squad"
-		}),
-		merge(MotorizedInfantrySquad, {
-			name: "Charlie Squad"
-		})
-	]
-} satisfies UnitTemplate;
+		[MotorizedInfantrySquad, 3]
+	],
+	classProfile: UnitProfiles.USProfiles.MotorizedInfantry,
+	sizeProfile: UnitProfiles.USProfiles.Platoon,
+} satisfies UnitTemplates.Template;
 
 const MotorizedInfantryCompany = {
-	name: "Motorized Infantry Company",
 	stack: GameStack.BATTLE_STACK,
 	subordinates: [
-		merge(MotorizedInfantryPlatoon, {
-			name: "1st Platoon"
-		}),
-		merge(MotorizedInfantryPlatoon, {
-			name: "2nd Platoon"
-		}),
-		merge(MotorizedInfantryPlatoon, {
-			name: "3rd Platoon"
-		})
-	]
-} satisfies UnitTemplate;
+		[MotorizedInfantryPlatoon, 3]
+	],
+	classProfile: UnitProfiles.USProfiles.MotorizedInfantry,
+	sizeProfile: UnitProfiles.USProfiles.Company,
+} satisfies UnitTemplates.Template;
 
 const MotorizedInfantryBattalion = {
-	name: "Motorized Infantry Battalion",
-	stack: GameStack.BATTLE_STACK,
-	subordinates: [
-		merge(MotorizedInfantryCompany, {
-			name: "Alpha Company"
-		}),
-		merge(MotorizedInfantryCompany, {
-			name: "Echo Company"
-		}),
-		merge(MotorizedInfantryCompany, {
-			name: "Charlie Company"
-		}),
-	]
-} satisfies UnitTemplate;
-
-export const TestTemplate = {
-	name: "test",
 	stack: GameStack.COMMAND_STACK,
 	subordinates: [
-		MotorizedInfantryBattalion
-	]
-} satisfies UnitTemplate;
+		[MotorizedInfantryCompany, 3]
+	],
+	classProfile: UnitProfiles.USProfiles.MotorizedInfantry,
+	sizeProfile: UnitProfiles.USProfiles.Battalion,
+} satisfies UnitTemplates.Template;
+
+const MotorizedInfantryBrigade = {
+	stack: GameStack.COMMAND_STACK,
+	subordinates: [
+		[MotorizedInfantryBattalion, 3]
+	],
+	classProfile: UnitProfiles.USProfiles.MotorizedInfantry,
+	sizeProfile: UnitProfiles.USProfiles.Brigade,
+} satisfies UnitTemplates.Template;
+
+export { MotorizedInfantryBrigade as TestTemplate };
+

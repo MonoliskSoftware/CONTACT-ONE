@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "@rbxts/react";
-import { Faction } from "CONTACT ONE/shared/stacks/organization/Faction";
+import { Faction } from "CONTACT ONE/shared/stacks/organization/elements/Faction";
 import { SpawnManager } from "CORP/shared/Scripts/Networking/SpawnManager";
 import { PlayerAssignmentsManager } from "../PlayerAssignmentsManager";
 import { DefaultFrameChildren } from "./style/StyleFrame";

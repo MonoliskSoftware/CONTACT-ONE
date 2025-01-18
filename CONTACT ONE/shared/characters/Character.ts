@@ -3,7 +3,7 @@ import { Signal } from "../Libraries/Signal";
 import { ServerSideOnly } from "../Libraries/Utilities";
 import { NetworkBehavior } from "../Scripts/Networking/NetworkBehavior";
 import { NetworkVariable } from "../Scripts/Networking/NetworkVariable";
-import { BaseElement } from "../stacks/organization/BaseElement";
+import { GenericUnit } from "../stacks/organization/elements/Unit";
 
 const PathToRig = "CONTACT ONE/assets/prefabs/HumanoidRig";
 
@@ -19,12 +19,14 @@ export class Character extends NetworkBehavior {
 	/**
 	 * Reference to the unit this character is assigned to, or undefined if none.
 	 */
-	public readonly unit = new NetworkVariable(this, undefined as unknown as BaseElement);
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	public readonly unit = new NetworkVariable(this, undefined as unknown as GenericUnit);
 	/**
 	 * Reference to the rig instance.
 	 */
 	private readonly rig = new NetworkVariable<Rig>(this, undefined as unknown as Rig);
-	private lastUnit: BaseElement | undefined;
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	private lastUnit: GenericUnit | undefined;
 
 	public readonly onIsCommanderChanged = new Signal<[boolean]>(`${this.getId()}IsCommanderChanged`);
 

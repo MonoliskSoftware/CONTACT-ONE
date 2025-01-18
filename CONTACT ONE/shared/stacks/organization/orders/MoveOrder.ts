@@ -1,7 +1,8 @@
 import { GameObject } from "CORP/shared/Scripts/Componentization/GameObject";
+import { CommandUnit } from "../elements/CommandUnit";
 import { BaseOrder } from "./BaseOrder";
 
-export class MoveOrder extends BaseOrder {
+export class MoveOrder extends BaseOrder<CommandUnit> {
 	public onStart(): void {
 
 	}

@@ -2,7 +2,7 @@ import { GameObject } from "../Scripts/Componentization/GameObject";
 import { NetworkBehavior } from "../Scripts/Networking/NetworkBehavior";
 import { RPC, RPCAllowedEndpoints } from "../Scripts/Networking/RPC";
 import { SpawnManager } from "../Scripts/Networking/SpawnManager";
-import { Faction } from "../stacks/organization/Faction";
+import { Faction } from "../stacks/organization/elements/Faction";
 import { PlayerManager } from "./PlayerManager";
 
 /**

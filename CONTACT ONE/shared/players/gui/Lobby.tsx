@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useState } from "@rbxts/react";
-import { Faction } from "CONTACT ONE/shared/stacks/organization/Faction";
+import { Faction } from "CONTACT ONE/shared/stacks/organization/elements/Faction";
 import { PlayerBehavior } from "../PlayerBehavior";
 import { FactionSelector } from "./FactionSelector";
 import { GuiManagerContext } from "./GuiManagerContext";

@@ -1,20 +1,21 @@
 import { BaseController } from "CONTACT ONE/shared/controllers/BaseController";
 import { NetworkVariable } from "CORP/shared/Scripts/Networking/NetworkVariable";
-import { GameStack } from "../StackManager";
-import { BaseElement } from "./BaseElement";
+import { GameStack } from "../../StackManager";
 import { BattleUnit } from "./BattleUnit";
 import { Faction } from "./Faction";
+import { Unit } from "./Unit";
 
 /**
  * Command units are the highest level in the org hierarchy. The subordinates of a Command unit are always Battle units.
  */
-export class CommandUnit extends BaseElement {
-	public readonly subordinates: (BattleUnit | CommandUnit)[] = [];
+export class CommandUnit extends Unit<Faction, CommandUnit | BattleUnit> {
 	public readonly controller = new NetworkVariable<BaseController>(this, undefined as unknown as BaseController);
-	public readonly parent = new NetworkVariable<Faction | CommandUnit>(this, undefined as unknown as Faction);
 
-	private lastParent: Faction | CommandUnit | undefined;
+	private lastParent: CommandUnit | Faction | undefined;
 	private lastController: BaseController | undefined;
+
+	public readonly subordinates: (CommandUnit | BattleUnit)[] = [];
+	public readonly stack = GameStack.COMMAND_STACK;
 
 	public onStart(): void {
 		this.applyAncestry();
@@ -63,14 +64,14 @@ export class CommandUnit extends BaseElement {
 	}
 
 	public subordinateOnAdded(subordinate: CommandUnit | BattleUnit) {
-		if (!this.subordinates.includes(subordinate)) this.subordinates.push(subordinate); 
+		if (!this.subordinates.includes(subordinate)) this.subordinates.push(subordinate);
+
+		this.subordinateAdded.fire(subordinate);
 	}
 
 	public subordinateOnRemoved(subordinate: CommandUnit | BattleUnit) {
-		this.subordinates.remove(this.subordinates.indexOf(subordinate));
-	}
+		this.subordinateRemoving.fire(subordinate);
 
-	getStack(): GameStack {
-		return GameStack.COMMAND_STACK;
+		this.subordinates.remove(this.subordinates.indexOf(subordinate));
 	}
 }

@@ -8,7 +8,9 @@ export const DefaultTextLabelStyle = {
 	TextSize: 32,
 	TextWrapped: true,
 	TextXAlignment: Enum.TextXAlignment.Left,
-	FontFace: Font.fromName("Roboto")
+	FontFace: Font.fromName("Roboto"),
+	Position: UDim2.fromScale(0.5, 0.5),
+	AnchorPoint: new Vector2(0.5, 0.5)
 } satisfies React.InstanceProps<TextLabel>;
 
 export const DefaultTextLabelChildren = (
