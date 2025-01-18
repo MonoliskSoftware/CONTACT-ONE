@@ -88,6 +88,8 @@ class CommandStackCameraModule {
 
 			viewer.CameraNode.Position = viewer.CameraNode.Position.Lerp(viewer.Root.Position, deltaTime * 10);
 
+			this.applyCameraDistance();
+
 			this.behavior.updateViewerPosition(viewer.Root.Position.add(this.getMoveVector().mul(this.getCurrentSpeed())));
 		}
 	}

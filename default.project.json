@@ -45,6 +45,9 @@
 			"$properties": {
 				"Technology": "Future"
 			}
+		},
+		"Workspace": {
+			"$path": "CONTACT-ONE-MAP/WASHINGTON"
 		}
 	}
 }
