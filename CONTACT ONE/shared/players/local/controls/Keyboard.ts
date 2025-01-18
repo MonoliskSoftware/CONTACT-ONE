@@ -1,4 +1,5 @@
 import { ContextActionService, UserInputService } from "@rbxts/services";
+import { PlayerModule } from "../PlayerModule";
 import { BaseCharacterController } from "./BaseCharacterController";
 
 export class Keyboard extends BaseCharacterController {
@@ -12,8 +13,8 @@ export class Keyboard extends BaseCharacterController {
 	jumpEnabled = true;
 	jumpRequested = false;
 
-	constructor(CONTROL_ACTION_PRIORITY: number) {
-		super();
+	constructor(playerModule: PlayerModule, CONTROL_ACTION_PRIORITY: number) {
+		super(playerModule);
 
 		this.CONTROL_ACTION_PRIORITY = CONTROL_ACTION_PRIORITY;
 	}

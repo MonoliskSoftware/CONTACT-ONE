@@ -1,3 +1,4 @@
+import { PlayerModule } from "../PlayerModule";
 import { BaseCharacterController } from "./BaseCharacterController";
 
 // Set this to true if you want to instead use the triggers for the throttle
@@ -25,8 +26,8 @@ export abstract class RBXVehicleController extends BaseCharacterController {
 
 	readonly CONTROL_ACTION_PRIORITY: number;
 
-	constructor(CONTROL_ACTION_PRIORITY: number) {
-		super();
+	constructor(playerModule: PlayerModule, CONTROL_ACTION_PRIORITY: number) {
+		super(playerModule);
 
 		this.CONTROL_ACTION_PRIORITY = CONTROL_ACTION_PRIORITY;
 	}

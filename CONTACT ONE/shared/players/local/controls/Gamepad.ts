@@ -1,4 +1,5 @@
 import { ContextActionService, UserInputService } from "@rbxts/services";
+import { PlayerModule } from "../PlayerModule";
 import { BaseCharacterController } from "./BaseCharacterController";
 
 const NONE = Enum.UserInputType.None;
@@ -16,8 +17,8 @@ export class Gamepad extends BaseCharacterController {
 
 	readonly CONTROL_ACTION_PRIORITY: number;
 
-	constructor(CONTROL_ACTION_PRIORITY: number) {
-		super();
+	constructor(playerModule: PlayerModule, CONTROL_ACTION_PRIORITY: number) {
+		super(playerModule);
 
 		this.CONTROL_ACTION_PRIORITY = CONTROL_ACTION_PRIORITY;
 	}

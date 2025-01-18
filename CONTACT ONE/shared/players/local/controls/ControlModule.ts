@@ -1,6 +1,7 @@
 import { GuiService, Players, RunService, UserInputService, VRService, Workspace } from "@rbxts/services";
 import { FlagUtil } from "CONTACT ONE/shared/players/local/FlagUtil";
 import { Constructable } from "CORP/shared/Libraries/Utilities";
+import { PlayerModule } from "../PlayerModule";
 import { BaseCharacterController } from "./BaseCharacterController";
 import { DynamicThumbstick } from "./DynamicThumbstick";
 import { Gamepad } from "./Gamepad";
@@ -116,7 +117,11 @@ export class ControlModule {
 	touchGui: ScreenGui | undefined;
 	playerGuiAddedConn: RBXScriptConnection | undefined;
 
-	constructor() {
+	private playerModule: PlayerModule;
+
+	constructor(playerModule: PlayerModule) {
+		this.playerModule = playerModule;
+
 		Players.LocalPlayer.CharacterAdded.Connect((char) => this.OnCharacterAdded(char));
 		Players.LocalPlayer.CharacterRemoving.Connect((char) => this.OnCharacterRemoving(char));
 
@@ -242,7 +247,7 @@ export class ControlModule {
 					|| */this.activeControlModule === DynamicThumbstick
 				)
 			) {
-				if (!this.controllers.has(TouchJump)) this.controllers.set(TouchJump, new TouchJump());
+				if (!this.controllers.has(TouchJump)) this.controllers.set(TouchJump, new TouchJump(this.playerModule));
 
 				this.touchJumpController = this.controllers.get(TouchJump) as TouchJump;
 				this.touchJumpController.Enable(true, this.touchControlFrame);
@@ -582,7 +587,7 @@ export class ControlModule {
 		}
 
 		// first time switching to this control module, should instantiate it
-		if (!this.controllers.has(controlModule)) this.controllers.set(controlModule, new controlModule(CONTROL_ACTION_PRIORITY));
+		if (!this.controllers.has(controlModule)) this.controllers.set(controlModule, new controlModule(this.playerModule, CONTROL_ACTION_PRIORITY));
 
 		// switch to the new controlModule
 		if (this.activeController !== this.controllers.get(controlModule)) {

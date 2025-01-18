@@ -1,6 +1,7 @@
 import { GuiService, Players } from "@rbxts/services";
 import { CharacterUtil } from "../CharacterUtil";
 import { FlagUtil } from "../FlagUtil";
+import { PlayerModule } from "../PlayerModule";
 import { BaseCharacterController } from "./BaseCharacterController";
 
 const FFlagUserUpdateTouchJump = FlagUtil.getUserFlag("UserUpdateTouchJump2");
@@ -57,8 +58,8 @@ export class TouchJump extends BaseCharacterController {
 
 	touchObject: InputObject | undefined;
 
-	constructor() {
-		super();
+	constructor(playerModule: PlayerModule) {
+		super(playerModule);
 
 		this.isJumping = false;
 	}

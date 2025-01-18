@@ -1,6 +1,7 @@
 import { Players, UserInputService, VRService, Workspace } from "@rbxts/services";
 import { Connection } from "CORP/shared/Libraries/Signal";
 import { FlagUtil } from "../FlagUtil";
+import { PlayerModule } from "../PlayerModule";
 import { CameraInput } from "./CameraInput";
 import { CameraToggleStateController } from "./CameraToggleStateController";
 import { CameraUI } from "./CameraUI";
@@ -104,7 +105,11 @@ export abstract class BaseCamera {
 	isCameraToggle: boolean = false;
 	cameraSubjectChangedConn: RBXScriptConnection | undefined;
 
-	constructor() {
+	protected playerModule: PlayerModule;
+
+	constructor(playerModule: PlayerModule) {
+		this.playerModule = playerModule;
+		
 		// Initialization things used to always execute at game load time, but now these camera modules are instantiated
 		// when needed, so the code here may run well after the start of the game
 		if (player.Character) this.OnCharacterAdded(player.Character);
@@ -583,6 +588,80 @@ export abstract class BaseCamera {
 
 		return result;
 	}
+
+	GetSubjectCFrame(): CFrame {
+		let result = this.lastSubjectCFrame;
+
+		const camera = Workspace.CurrentCamera;
+		const cameraSubject = camera ? camera.CameraSubject as BasePart | Model | Humanoid : undefined;
+	
+		if (!cameraSubject) return result as CFrame;
+	
+		if (cameraSubject.IsA("Humanoid")) {
+			const humanoid = cameraSubject;
+			const humanoidIsDead = humanoid.GetState() === Enum.HumanoidStateType.Dead;
+	
+			let cameraOffset = humanoid.CameraOffset;
+			// When in mouse lock mode, the character's rotation follows the camera instead of vice versa.
+			// Allow the mouse lock calculation to be camera-based instead of subject-based to prevent jitter.
+			if (FFlagUserFixCameraOffsetJitter && this.GetIsMouseLocked()) {
+				cameraOffset = new Vector3();
+			}
+	
+			let bodyPartToFollow: BasePart | undefined = humanoid.RootPart;
+	
+			// If the humanoid is dead, prefer their head part as a follow target, if it exists.
+			if (humanoidIsDead) {
+				if (humanoid.Parent && humanoid.Parent.IsA("Model")) {
+					bodyPartToFollow = humanoid.Parent.FindFirstChild("Head") as BasePart || bodyPartToFollow;
+				}
+			}
+	
+			if (bodyPartToFollow && bodyPartToFollow.IsA("BasePart")) {
+				let heightOffset: Vector3;
+	
+				if (humanoid.RigType === Enum.HumanoidRigType.R15) {
+					if (humanoid.AutomaticScalingEnabled) {
+						heightOffset = R15_HEAD_OFFSET;
+	
+						const rootPart = humanoid.RootPart;
+						if (bodyPartToFollow === rootPart) {
+							const rootPartSizeOffset = (rootPart.Size.Y - HUMANOID_ROOT_PART_SIZE.Y) / 2;
+							heightOffset = heightOffset.add(new Vector3(0, rootPartSizeOffset, 0));
+						}
+					} else {
+						heightOffset = R15_HEAD_OFFSET_NO_SCALING;
+					}
+				} else {
+					heightOffset = HEAD_OFFSET;
+				}
+	
+				if (humanoidIsDead) {
+					heightOffset = Vector3.zero;
+				}
+	
+				result = bodyPartToFollow.CFrame.mul(new CFrame(heightOffset.add(cameraOffset)));
+			}
+	
+		} else if (cameraSubject.IsA("BasePart")) {
+			result = cameraSubject.CFrame;
+	
+		} else if (cameraSubject.IsA("Model")) {
+			// Model subjects are expected to have a PrimaryPart to determine orientation.
+			if (cameraSubject.PrimaryPart) {
+				result = cameraSubject.GetPrimaryPartCFrame();
+			} else {
+				result = new CFrame();
+			}
+		}
+	
+		if (result) {
+			this.lastSubjectCFrame = result;
+		}
+	
+		return result as CFrame;
+	}
+	
 
 	GetCameraLookVector(): Vector3 {
 		return Workspace.CurrentCamera ? Workspace.CurrentCamera.CFrame.LookVector : new Vector3(0, 0, 1);

@@ -1,4 +1,5 @@
 import { ConnectionUtil } from "../ConnectionUtil";
+import { PlayerModule } from "../PlayerModule";
 
 /**
  * Abstract base class for character controllers, not intended to be directly instantiated.
@@ -10,6 +11,8 @@ export abstract class BaseCharacterController {
 	protected isJumping = false;
 	protected _connectionUtil = new ConnectionUtil();
 
+	protected playerModule: PlayerModule;
+
 	GetMoveVector(): Vector3 {
 		return this.moveVector;
 	}
@@ -20,6 +23,10 @@ export abstract class BaseCharacterController {
 
 	GetIsJumping(): boolean {
 		return this.isJumping;
+	}
+
+	constructor(playerModule: PlayerModule) {
+		this.playerModule = playerModule;
 	}
 
 	/**

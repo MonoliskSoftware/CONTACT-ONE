@@ -2,6 +2,7 @@
 
 import { ContextActionService, GuiService, Players, RunService, TweenService, UserInputService, Workspace } from "@rbxts/services";
 import { FlagUtil } from "../FlagUtil";
+import { PlayerModule } from "../PlayerModule";
 import { BaseCharacterController } from "./BaseCharacterController";
 
 //[[ Constants ]]
@@ -80,8 +81,8 @@ export class DynamicThumbstick extends BaseCharacterController {
 	TouchMovedCon: RBXScriptConnection | undefined;
 	absoluteSizeChangedConn: RBXScriptConnection | undefined;
 
-	constructor() {
-		super();
+	constructor(playerModule: PlayerModule) {
+		super(playerModule);
 
 		return this;
 	}

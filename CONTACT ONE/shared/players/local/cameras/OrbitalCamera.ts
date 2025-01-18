@@ -1,6 +1,7 @@
 import { Players, Workspace } from "@rbxts/services";
 import { dict } from "CORP/shared/Libraries/Utilities";
 import { FlagUtil } from "../FlagUtil";
+import { PlayerModule } from "../PlayerModule";
 import { BaseCamera } from "./BaseCamera";
 import { CameraInput } from "./CameraInput";
 import { CameraUtils } from "./CameraUtils";
@@ -83,8 +84,8 @@ export class OrbitalCamera extends BaseCamera {
 
 	externalProperties = DefaultOrbitalCameraExternalProperties;
 
-	constructor() {
-		super();
+	constructor(playerModule: PlayerModule) {
+		super(playerModule);
 
 		this.LoadNumberValueParameters();
 	}

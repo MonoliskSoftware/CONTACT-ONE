@@ -1,6 +1,7 @@
 import { Players, RunService, UserInputService, VRService, Workspace } from "@rbxts/services";
 import { Constructable, dict } from "CORP/shared/Libraries/Utilities";
 import { FlagUtil } from "../FlagUtil";
+import { PlayerModule } from "../PlayerModule";
 import { BaseCamera } from "./BaseCamera";
 import { BaseOcclusion } from "./BaseOcclusion";
 import { CameraInput } from "./CameraInput";
@@ -10,6 +11,7 @@ import { MouseLockController } from "./MouseLockController";
 import { OrbitalCamera } from "./OrbitalCamera";
 import { Poppercam } from "./Poppercam";
 import { TransparencyController } from "./TransparencyController";
+import { VRCamera } from "./VRCamera";
 
 const UserGameSettings = UserSettings().GetService("UserGameSettings");
 
@@ -79,7 +81,11 @@ export class CameraModule {
 	// Other properties
 	private occlusionMode: Enum.DevCameraOcclusionMode | undefined;
 
-	constructor() {
+	private playerModule: PlayerModule;
+
+	constructor(playerModule: PlayerModule) {
+		this.playerModule = playerModule;
+
 		// Management of which options appear on the Roblox User Settings screen
 		{
 			const PlayerScripts = Players.LocalPlayer.WaitForChild("PlayerScripts") as PlayerScripts;
@@ -196,8 +202,7 @@ export class CameraModule {
 
 		if (!newCameraCreator) {
 			if (VRService.VREnabled) {
-				// newCameraCreator = VRCamera;
-				print("VRCamera");
+				newCameraCreator = VRCamera;
 			} else if (cameraMovementMode === Enum.ComputerCameraMovementMode.Classic ||
 				cameraMovementMode === Enum.ComputerCameraMovementMode.Follow ||
 				cameraMovementMode === Enum.ComputerCameraMovementMode.Default ||
@@ -229,7 +234,7 @@ export class CameraModule {
 		let newCameraController: BaseCamera = undefined as unknown as BaseCamera;
 
 		if (!CameraModule.instantiatedCameraControllers.has(newCameraCreator)) {
-			newCameraController = new newCameraCreator();
+			newCameraController = new newCameraCreator(this.playerModule);
 			CameraModule.instantiatedCameraControllers.set(newCameraCreator, newCameraController);
 		} else {
 			newCameraController = CameraModule.getInstantiatedCameraController(newCameraCreator) as BaseCamera;
