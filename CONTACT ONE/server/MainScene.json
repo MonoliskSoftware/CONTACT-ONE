@@ -30,6 +30,13 @@
 						"PlayerManager"
 					],
 					"state": {}
+				},
+				{
+					"path": [
+						"CONTACT ONE/players/PlayerAssignmentsManager",
+						"PlayerAssignmentsManager"
+					],
+					"state": {}
 				}
 			],
 			"children": []
