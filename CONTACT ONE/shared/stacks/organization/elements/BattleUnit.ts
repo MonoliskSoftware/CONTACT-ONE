@@ -38,10 +38,22 @@ export class BattleUnit extends Unit<BattleUnit | CommandUnit, BattleUnit> {
 	}
 
 	public subordinateOnAdded(subordinate: BattleUnit) {
-		if (!this.subordinates.includes(subordinate)) this.subordinates.push(subordinate); 
+		if (!this.subordinates.includes(subordinate)) this.subordinates.push(subordinate);
 	}
 
 	public subordinateOnRemoved(subordinate: BattleUnit) {
 		this.subordinates.remove(this.subordinates.indexOf(subordinate));
+	}
+
+	public getCommandUnit(): CommandUnit | undefined {
+		let parent = this.parent.getValue();
+
+		while (parent) {
+			if (parent instanceof CommandUnit) return parent;
+
+			parent = parent.parent?.getValue();
+		}
+
+		return undefined;
 	}
 }
