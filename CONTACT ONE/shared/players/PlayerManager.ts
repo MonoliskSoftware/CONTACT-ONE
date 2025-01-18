@@ -1,4 +1,5 @@
 import { Players, RunService } from "@rbxts/services";
+import { Constructable } from "../Libraries/Utilities";
 import { GameObject } from "../Scripts/Componentization/GameObject";
 import { ExtractNetworkVariables, NetworkBehavior } from "../Scripts/Networking/NetworkBehavior";
 import { Networking } from "../Scripts/Networking/Networking";
@@ -6,7 +7,10 @@ import { NetworkObject } from "../Scripts/Networking/NetworkObject";
 import { PlayerBehavior } from "./PlayerBehavior";
 
 export class PlayerManager extends NetworkBehavior {
-	private static singleton: PlayerManager;
+	public static singleton: PlayerManager;
+	public static localBehavior: PlayerBehavior;
+	
+	private static playerComponent: Constructable<PlayerBehavior>; 
 	
 	private players = new Map<Player, PlayerBehavior>();
 
@@ -16,6 +20,10 @@ export class PlayerManager extends NetworkBehavior {
 		PlayerManager.singleton = this;
 	}
 
+	public static setPlayerComponent(clazz: Constructable<PlayerBehavior>) {
+		this.playerComponent = clazz;
+	}
+
 	private createPlayerBehavior(player: Player) {
 		const gameObject = new GameObject();
 
@@ -23,11 +31,21 @@ export class PlayerManager extends NetworkBehavior {
 		gameObject.setParent(this.getGameObject());
 		gameObject.addComponent(NetworkObject).changeOwnership(player);
 
-		return gameObject.addComponent(PlayerBehavior, {
+		const behavior = gameObject.addComponent(PlayerManager.playerComponent, {
 			initialNetworkVariableStates: ({
 				player: player
 			} satisfies ExtractNetworkVariables<PlayerBehavior> as unknown as Map<string, Networking.NetworkableTypes>)
 		});
+
+		this.players.set(player, behavior);
+
+		if (RunService.IsClient() && player === Players.LocalPlayer) PlayerManager.localBehavior = behavior;
+
+		return behavior;
+	}
+
+	public getBehaviorFromPlayer(player: Player): PlayerBehavior {
+		return this.players.get(player) as PlayerBehavior;
 	}
 	
 	public onStart(): void {

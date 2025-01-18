@@ -1,5 +1,6 @@
-import { NetworkBehavior } from "../Scripts/Networking/NetworkBehavior";
+import { CommandUnit } from "../stacks/organization/CommandUnit";
 
-export abstract class BaseController extends NetworkBehavior {
-	
+export interface BaseController {
+	commandUnitOnCommandTaken(unit: CommandUnit): void;
+	commandUnitOnCommandRemoved(unit: CommandUnit): void;
 }

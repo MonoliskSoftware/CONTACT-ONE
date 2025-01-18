@@ -1,5 +1,6 @@
 import Object from "@rbxts/object-utils";
 import { RunService } from "@rbxts/services";
+import { BaseController } from "../controllers/BaseController";
 import { ClientSideOnly } from "../Libraries/Utilities";
 import { GameObject } from "../Scripts/Componentization/GameObject";
 import { ExtractNetworkVariables, NetworkBehavior } from "../Scripts/Networking/NetworkBehavior";
@@ -7,27 +8,33 @@ import { Networking } from "../Scripts/Networking/Networking";
 import { NetworkVariable } from "../Scripts/Networking/NetworkVariable";
 import { FallbackStackBehavior } from "../stacks/local/FallbackStackBehavior";
 import { StackBehavior } from "../stacks/local/StackBehavior";
+import { CommandUnit } from "../stacks/organization/CommandUnit";
+import { Faction } from "../stacks/organization/Faction";
 import { GameStack, StackBehaviorConstructors } from "../stacks/StackManager";
 import { GuiManager } from "./gui/GuiManager";
 import { CameraModule } from "./local/cameras/CameraModule";
 import { ControlModule } from "./local/controls/ControlModule";
+import { PlayerModule } from "./local/PlayerModule";
 import { PlayerState } from "./PlayerState";
 
 /**
  * The PlayerBehavior is the manager used to manage and interface with an individual Player's scripts and behaviors.
  */
-export class PlayerBehavior extends NetworkBehavior {
+export class PlayerBehavior extends NetworkBehavior implements BaseController {
 	public readonly player = new NetworkVariable<Player>(this, undefined as unknown as Player);
 	public readonly state = new NetworkVariable(this, PlayerState.LOBBY);
+	public readonly faction = new NetworkVariable(this, undefined as unknown as Faction);
 
+	// Stacks
 	private currentStackBehavior: StackBehavior = this.getGameObject().addComponent(FallbackStackBehavior);
 	private stackBehaviors = undefined as unknown as { [key in GameStack]: StackBehavior };
 
-	public stack = new NetworkVariable<GameStack>(this, GameStack.NONE);
+	public readonly stack = new NetworkVariable<GameStack>(this, GameStack.NONE);
 
-	private readonly cameraModule = RunService.IsClient() && new CameraModule();
-	private readonly controlModule = RunService.IsClient() && new ControlModule();
+	private readonly playerModule = RunService.IsClient() ? new PlayerModule() : undefined;
 	private readonly guiManager = RunService.IsClient() && new GuiManager(this);
+
+	public commandedUnits: CommandUnit[] = [];
 
 	constructor(gameObject: GameObject) {
 		super(gameObject);
@@ -35,12 +42,12 @@ export class PlayerBehavior extends NetworkBehavior {
 
 	@ClientSideOnly
 	public getCameraModule(): CameraModule {
-		return this.cameraModule as CameraModule;
+		return this.playerModule?.cameras as CameraModule;
 	}
 
 	@ClientSideOnly
 	public getControlModule(): ControlModule {
-		return this.controlModule as ControlModule;
+		return this.playerModule?.controls as ControlModule;
 	}
 
 	@ClientSideOnly
@@ -81,5 +88,13 @@ export class PlayerBehavior extends NetworkBehavior {
 		} else {
 			return Object.fromEntries(Object.entries(StackBehaviorConstructors).map(([key, value]) => [key, this.getGameObject().waitForComponent(value) as StackBehavior]));
 		}
+	}
+
+	public commandUnitOnCommandTaken(unit: CommandUnit) {
+		if (this.commandedUnits.includes(unit)) this.commandedUnits.push(unit);
+	}
+
+	public commandUnitOnCommandRemoved(unit: CommandUnit) {
+		this.commandedUnits.remove(this.commandedUnits.indexOf(unit));
 	}
 }
