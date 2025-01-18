@@ -8,7 +8,7 @@ import { Unit } from "./Unit";
 /**
  * Command units are the highest level in the org hierarchy. The subordinates of a Command unit are always Battle units.
  */
-export class CommandUnit extends Unit<Faction, CommandUnit | BattleUnit> {
+export class CommandUnit extends Unit<Faction | CommandUnit, CommandUnit | BattleUnit> {
 	public readonly controller = new NetworkVariable<BaseController>(this, undefined as unknown as BaseController);
 
 	private lastParent: CommandUnit | Faction | undefined;
@@ -73,5 +73,17 @@ export class CommandUnit extends Unit<Faction, CommandUnit | BattleUnit> {
 		this.subordinateRemoving.fire(subordinate);
 
 		this.subordinates.remove(this.subordinates.indexOf(subordinate));
+	}
+
+	public getFaction(): Faction | undefined {
+		let parent = this.parent.getValue();
+
+		while (parent) {
+			if (parent instanceof Faction) return parent;
+
+			parent = parent.parent?.getValue();
+		}
+
+		return undefined;
 	}
 }
