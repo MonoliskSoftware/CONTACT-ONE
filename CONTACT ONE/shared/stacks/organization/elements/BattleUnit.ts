@@ -1,5 +1,6 @@
 import { GameStack } from "../../StackManager";
 import { CommandUnit } from "./CommandUnit";
+import { Faction } from "./Faction";
 import { Unit } from "./Unit";
 
 /**
@@ -55,5 +56,9 @@ export class BattleUnit extends Unit<BattleUnit | CommandUnit, BattleUnit> {
 		}
 
 		return undefined;
+	}
+
+	public getFaction(): Faction | undefined {
+		return this.getCommandUnit()?.getFaction();
 	}
 }
