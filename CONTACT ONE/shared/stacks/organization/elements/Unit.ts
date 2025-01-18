@@ -13,18 +13,22 @@ export abstract class Unit<P extends BaseElement<any>, C extends BaseElement<any
 	 * A reference to the commander of this element.
 	 */
 	public readonly commander = new NetworkVariable(this, undefined as unknown as Character);
+	
 	/**
 	 * Profile describing sizing info about this unit.
 	 */
 	public readonly sizeProfile = new NetworkVariable<UnitProfiles.SizeProfile>(this, undefined as unknown as UnitProfiles.SizeProfile);
+
 	/**
 	 * Profile describing class info about this unit.
 	 */
 	public readonly classProfile = new NetworkVariable<UnitProfiles.ClassProfile>(this, undefined as unknown as UnitProfiles.ClassProfile);
+
 	/**
 	 * An array containing the Characters directly in this unit.
 	 */
 	public readonly directMembers: Character[] = [];
+
 	/**
 	 * The parent Element of this unit.
 	 */
