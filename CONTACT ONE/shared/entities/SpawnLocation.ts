@@ -5,7 +5,7 @@ export class SpawnLocation extends NetworkBehavior {
 	public readonly factionTag: string = undefined as unknown as string;
 
 	public onStart(): void {
-		print("Hello!");
+
 	}
 
 	public willRemove(): void {

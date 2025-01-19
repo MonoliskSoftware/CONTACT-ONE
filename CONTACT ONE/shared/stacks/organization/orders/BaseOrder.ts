@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { ServerSideOnly } from "CORP/shared/Libraries/Utilities";
+import { PlayerManager } from "CONTACT ONE/shared/players/PlayerManager";
+import { dict, ServerSideOnly } from "CORP/shared/Libraries/Utilities";
 import { GameObject } from "CORP/shared/Scripts/Componentization/GameObject";
 import { NetworkBehavior } from "CORP/shared/Scripts/Networking/NetworkBehavior";
 import { NetworkVariable } from "CORP/shared/Scripts/Networking/NetworkVariable";
@@ -35,18 +36,21 @@ export const DefaultConfiguration: Required<OptionalProperties<OrderConfiguratio
 /**
  * Orders are used to define instructions for units. Order cans be given by players and by AI.
  */
-export abstract class BaseOrder<U extends Unit<any, any>, T> extends NetworkBehavior {
-	public readonly assignedUnitIds = new NetworkVariable(this, undefined as unknown as string[]);
+export abstract class BaseOrder<U extends Unit<any, any>, T extends dict> extends NetworkBehavior {
+	public readonly assignedUnitIds = new NetworkVariable<string[]>(this, []);
 	public readonly originUnit = new NetworkVariable(this, undefined as unknown as CommandUnit);
 
-	public readonly abstract config: OrderConfiguration;
+	public abstract getConfig(): OrderConfiguration;
 
 	/**
-	 * The execution config is a set of parameters that are modifiable by whoever filed the order.
-	 * 
-	 * The type for the execution config is changeable through the generic argument T.
+	 * Defines specification for execution parameters.
 	 */
-	public readonly abstract executionConfig: T; 
+	public readonly abstract executionParameterSpecification: T;
+
+	/**
+	 * Abstracted because we can't read executionParameterSpecification ourselves.
+	 */
+	public readonly abstract executionParameters: NetworkVariable<T>;
 
 	constructor(gameObject: GameObject) {
 		super(gameObject);
@@ -102,12 +106,82 @@ export abstract class BaseOrder<U extends Unit<any, any>, T> extends NetworkBeha
 		return this.assignedUnitIds.getValue().includes(unit.getId());
 	}
 
+	/**
+	 * Tries to assign the supplied unit to the order.
+	 * 
+	 * @returns Whether or not any change occurred.
+	 */
 	@RPC.Method({
 		allowedEndpoints: RPC.AllowedEndpoints.CLIENT_TO_SERVER,
 		returnMode: RPC.ReturnMode.RETURNS
 	})
-	public tryAssignUnit(unit: U): boolean {
+	public tryAssignUnit(unitId: string, params: RPC.IncomingParams = RPC.DefaultIncomingParams): boolean {
+		assert(params.sender);
 
+		const unit = SpawnManager.getNetworkBehaviorById(unitId) as Unit<any, any> | undefined;
+
+		assert(unit);
+		assert((unit.parent as NetworkVariable<Unit<any, any>>).getValue() === this.originUnit.getValue());
+
+		const behavior = PlayerManager.singleton.getBehaviorFromPlayer(params.sender);
+
+		assert(behavior);
+		assert(this.originUnit.getValue().controller.getValue() === behavior);
+
+		return this.assignUnit(unit as U);
+	}
+
+	@RPC.Method({
+		allowedEndpoints: RPC.AllowedEndpoints.CLIENT_TO_SERVER,
+		returnMode: RPC.ReturnMode.RETURNS
+	})
+	public trySetAssignedUnits(unitIds: string[], params: RPC.IncomingParams = RPC.DefaultIncomingParams): void {
+		assert(params.sender);
+
+		// ADD BACK VALIDATION LATER
+		// const unit = SpawnManager.getNetworkBehaviorById(unitId) as Unit<any, any> | undefined;
+
+		// assert(unit);
+		// assert((unit.parent as NetworkVariable<Unit<any, any>>).getValue() === this.originUnit.getValue());
+
+		const behavior = PlayerManager.singleton.getBehaviorFromPlayer(params.sender);
+
+		assert(behavior);
+		assert(this.originUnit.getValue().controller.getValue() === behavior);
+
+		this.setAssignedUnits(unitIds.map(id => SpawnManager.getNetworkBehaviorById(id) as U));
+	}
+
+	/**
+	 * 
+	 */
+	@RPC.Method({
+		allowedEndpoints: RPC.AllowedEndpoints.CLIENT_TO_SERVER
+	})
+	public tryExecute(params: RPC.IncomingParams = RPC.DefaultIncomingParams) {
+		assert(params.sender);
+
+		const behavior = PlayerManager.singleton.getBehaviorFromPlayer(params.sender);
+
+		assert(behavior);
+		assert(this.originUnit.getValue().controller.getValue() === behavior);
+
+		this.execute();
+	}
+
+	@RPC.Method({
+		allowedEndpoints: RPC.AllowedEndpoints.CLIENT_TO_SERVER
+	})
+	public trySetParameters(orderParams: T, params: RPC.IncomingParams = RPC.DefaultIncomingParams) {
+		assert(params.sender);
+
+		const behavior = PlayerManager.singleton.getBehaviorFromPlayer(params.sender);
+
+		assert(behavior);
+		assert(this.originUnit.getValue().controller.getValue() === behavior);
+
+		// Needs validation.
+		this.executionParameters.setValue(orderParams);
 	}
 
 	/**
@@ -115,7 +189,12 @@ export abstract class BaseOrder<U extends Unit<any, any>, T> extends NetworkBeha
 	 */
 	abstract onExecutionBegan(): void;
 
+	@ServerSideOnly
 	public execute() {
 		this.onExecutionBegan();
+	}
+
+	protected getSourceScript(): ModuleScript {
+		return script as ModuleScript;
 	}
 }

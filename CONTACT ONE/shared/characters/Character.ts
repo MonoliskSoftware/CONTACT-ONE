@@ -57,8 +57,15 @@ export class Character extends NetworkBehavior {
 		const unit = this.unit.getValue();
 
 		if (unit !== this.lastUnit) {
+			const f = (unit as (CommandUnit | BattleUnit)).getFaction();
 
+			if (RunService.IsServer()) {
+				const c = f?.name.getValue() === "AGF" ? new Color3(1, 0, 0) : new Color3(0, 0, 1);
 
+				this.rig.getValue().GetDescendants().forEach(i => {if (i.IsA("MeshPart")) {new Instance("SurfaceAppearance", i);i.Color = c;}});
+	
+			}
+			
 			this.lastUnit = unit;
 		}
 	}

@@ -25,7 +25,7 @@ class CommandStackCameraModule {
 	// Camera settings data
 	private readonly bounds = new Region3(new Vector3(-1024, -512, -1024), new Vector3(1024, 512, 1024));
 	private readonly distanceRange = new NumberRange(16, 512);
-	private readonly speedRange = new NumberRange(16, 64);
+	private readonly speedRange = new NumberRange(64, 512);
 
 	// Camera data
 	private camera = Workspace.CurrentCamera;
@@ -91,7 +91,7 @@ class CommandStackCameraModule {
 
 			this.applyCameraDistance();
 
-			this.behavior.updateViewerPosition(viewer.Root.Position.add(this.getMoveVector().mul(this.getCurrentSpeed())));
+			this.behavior.updateViewerPosition(viewer.Root.Position.add(this.getMoveVector().mul(this.getCurrentSpeed() * deltaTime)));
 		}
 	}
 
@@ -114,7 +114,7 @@ export class CommandStackBehavior extends StackBehavior {
 	})
 	updateViewerPosition(position: Vector3) {
 		const model = this.viewer.getValue();
-		const result = Workspace.Raycast(new Vector3(position.X, 1024, position.Y), new Vector3(0, -1024, 0));
+		const result: RaycastResult | undefined = undefined as (RaycastResult | undefined)/*Workspace.Raycast(new Vector3(position.X, 1024, position.Y), new Vector3(0, -2048, 0))*/;
 		const final = new Vector3(position.X, result ? result.Position.Y : 8, position.Z);
 
 		model.Root.Position = final;

@@ -41,7 +41,7 @@ export namespace UnitProfiles {
 	}
 
 	/**
-	 * NATO icons which can be used for unit classes.
+	 * Reference icons, used for unit class profiles.
 	 */
 	export enum NATOIcons {
 		INFANTRY = "rbxassetid://132947461251253",

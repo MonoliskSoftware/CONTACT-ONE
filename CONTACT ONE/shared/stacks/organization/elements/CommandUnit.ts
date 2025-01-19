@@ -2,7 +2,7 @@
 import { RunService } from "@rbxts/services";
 import { BaseController } from "CONTACT ONE/shared/controllers/BaseController";
 import { PlayerManager } from "CONTACT ONE/shared/players/PlayerManager";
-import { Constructable } from "CORP/shared/Libraries/Utilities";
+import { Constructable, dict } from "CORP/shared/Libraries/Utilities";
 import { GameObject } from "CORP/shared/Scripts/Componentization/GameObject";
 import { ExtractNetworkVariables } from "CORP/shared/Scripts/Networking/NetworkBehavior";
 import { Networking } from "CORP/shared/Scripts/Networking/Networking";
@@ -98,18 +98,20 @@ export class CommandUnit extends Unit<Faction | CommandUnit, CommandUnit | Battl
 		return undefined;
 	}
 
-	public createOrder<T extends BaseOrder<any, C>, C>(clazz: Constructable<T>, config: C): T {
+	public createOrder<T extends BaseOrder<any, C>, C extends dict>(clazz: Constructable<T>, config: C | false): T {
 		if (RunService.IsServer()) {
-			const order = this.getGameObject().addComponent<BaseOrder<any, any>>(clazz, {
-				executionConfig: config,
+			const order = this.getGameObject().addComponent<BaseOrder<any, C>>(clazz, {
 				initialNetworkVariableStates: ({
-					originUnit: this
+					originUnit: this,
+					executionParameters: config ? config : undefined
 				} satisfies ExtractNetworkVariables<BaseOrder<any, any>> as unknown as Map<string, Networking.NetworkableTypes>)
 			});
 
 			return order as T;
 		} else {
-			return SpawnManager.getNetworkBehaviorById(this.createOrderFromClientToServer((clazz as unknown as T).getComponentPath(true), config)) as T;
+			const id = this.createOrderFromClientToServer((clazz as unknown as T).getComponentPath(true), config);
+
+			return SpawnManager.yieldForNetworkBehaviorById(id) as T;
 		}
 	}
 
@@ -117,7 +119,7 @@ export class CommandUnit extends Unit<Faction | CommandUnit, CommandUnit | Battl
 		allowedEndpoints: RPC.AllowedEndpoints.CLIENT_TO_SERVER,
 		returnMode: RPC.ReturnMode.RETURNS
 	})
-	private createOrderFromClientToServer<T extends BaseOrder<any, C>, C>(path: SceneSerialization.ComponentPath, config: C, incomingParams: RPC.IncomingParams = RPC.DefaultIncomingParams): string {
+	private createOrderFromClientToServer<T extends BaseOrder<any, C>, C extends dict>(path: SceneSerialization.ComponentPath, config: C | false, incomingParams: RPC.IncomingParams = RPC.DefaultIncomingParams): string {
 		assert(incomingParams.sender);
 
 		const behavior = PlayerManager.singleton.getBehaviorFromPlayer(incomingParams.sender);

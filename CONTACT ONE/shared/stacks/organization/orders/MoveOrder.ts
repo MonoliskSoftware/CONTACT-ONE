@@ -1,19 +1,15 @@
 import { GameObject } from "CORP/shared/Scripts/Componentization/GameObject";
+import { NetworkVariable } from "CORP/shared/Scripts/Networking/NetworkVariable";
 import { CommandUnit } from "../elements/CommandUnit";
-import { BaseOrder, OrderConfiguration } from "./BaseOrder";
+import { BaseOrder } from "./BaseOrder";
 
-export interface MoveOrderParameters {
-	position: Vector3
-}
+export const MoveOrderParameters = {
+	position: Vector3.zero
+};
 
-export class MoveOrder extends BaseOrder<CommandUnit, MoveOrderParameters> {
-	public readonly config: OrderConfiguration = {
-		name: "move"
-	};
-
-	public executionConfig: MoveOrderParameters = {
-		position: Vector3.zero
-	};
+export class MoveOrder extends BaseOrder<CommandUnit, typeof MoveOrderParameters> {
+	public readonly executionParameterSpecification = MoveOrderParameters;
+	public readonly executionParameters = new NetworkVariable(this, this.executionParameterSpecification);
 
 	public onStart(): void {
 
@@ -32,6 +28,12 @@ export class MoveOrder extends BaseOrder<CommandUnit, MoveOrderParameters> {
 	}
 
 	public onExecutionBegan() {
-		this.getAssignedUnits().forEach(unit => unit.getDescendants().forEach(descendant => descendant.directMembers.forEach(member => member.getHumanoid().MoveTo(this.executionConfig.position))));
+		this.getAssignedUnits().forEach(unit => unit.getDescendants().forEach(descendant => descendant.directMembers.forEach(member => member.getHumanoid().MoveTo(this.executionParameters.getValue().position))));
+	}
+
+	public getConfig() {
+		return {
+			name: "Move"
+		};
 	}
 }
