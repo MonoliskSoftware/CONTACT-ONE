@@ -16,6 +16,7 @@ jobs:
       with:
         token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
         submodules: recursive  # Fetch all submodules recursively
+        fetch-depth: 0
 
     # Set up Node.js (for rbxtsc)
     - name: Set up Node.js
