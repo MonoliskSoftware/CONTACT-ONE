@@ -1,10 +1,13 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { RunService } from "@rbxts/services";
 import { BaseController } from "CONTACT ONE/shared/controllers/BaseController";
 import { PlayerManager } from "CONTACT ONE/shared/players/PlayerManager";
 import { Constructable } from "CORP/shared/Libraries/Utilities";
 import { GameObject } from "CORP/shared/Scripts/Componentization/GameObject";
+import { ExtractNetworkVariables } from "CORP/shared/Scripts/Networking/NetworkBehavior";
+import { Networking } from "CORP/shared/Scripts/Networking/Networking";
 import { NetworkVariable } from "CORP/shared/Scripts/Networking/NetworkVariable";
-import { RPC, RPCAllowedEndpoints, RPCReturnMode } from "CORP/shared/Scripts/Networking/RPC";
+import { RPC } from "CORP/shared/Scripts/Networking/RPC";
 import { SpawnManager } from "CORP/shared/Scripts/Networking/SpawnManager";
 import { SceneSerialization } from "CORP/shared/Scripts/Serialization/SceneSerialization";
 import { GameStack } from "../../StackManager";
@@ -95,12 +98,13 @@ export class CommandUnit extends Unit<Faction | CommandUnit, CommandUnit | Battl
 		return undefined;
 	}
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	public createOrder<T extends BaseOrder<any, C>, C>(clazz: Constructable<T>, config: C): T {
 		if (RunService.IsServer()) {
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			const order = this.getGameObject().addComponent<BaseOrder<any, any>>(clazz, {
-				executionConfig: config
+				executionConfig: config,
+				initialNetworkVariableStates: ({
+					originUnit: this
+				} satisfies ExtractNetworkVariables<BaseOrder<any, any>> as unknown as Map<string, Networking.NetworkableTypes>)
 			});
 
 			return order as T;
@@ -110,11 +114,10 @@ export class CommandUnit extends Unit<Faction | CommandUnit, CommandUnit | Battl
 	}
 
 	@RPC.Method({
-		allowedEndpoints: RPCAllowedEndpoints.CLIENT_TO_SERVER,
-		returnMode: RPCReturnMode.RETURNS
+		allowedEndpoints: RPC.AllowedEndpoints.CLIENT_TO_SERVER,
+		returnMode: RPC.ReturnMode.RETURNS
 	})
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	private createOrderFromClientToServer<T extends BaseOrder<any, C>, C>(path: SceneSerialization.ComponentPath, config: C, incomingParams: RPC.RPCIncomingParams = RPC.DefaultIncomingParams): string {
+	private createOrderFromClientToServer<T extends BaseOrder<any, C>, C>(path: SceneSerialization.ComponentPath, config: C, incomingParams: RPC.IncomingParams = RPC.DefaultIncomingParams): string {
 		assert(incomingParams.sender);
 
 		const behavior = PlayerManager.singleton.getBehaviorFromPlayer(incomingParams.sender);

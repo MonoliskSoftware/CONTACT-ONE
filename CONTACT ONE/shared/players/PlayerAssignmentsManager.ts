@@ -1,6 +1,6 @@
 import { GameObject } from "../Scripts/Componentization/GameObject";
 import { NetworkBehavior } from "../Scripts/Networking/NetworkBehavior";
-import { RPC, RPCAllowedEndpoints } from "../Scripts/Networking/RPC";
+import { RPC } from "../Scripts/Networking/RPC";
 import { SpawnManager } from "../Scripts/Networking/SpawnManager";
 import { CommandUnit } from "../stacks/organization/elements/CommandUnit";
 import { Faction } from "../stacks/organization/elements/Faction";
@@ -33,9 +33,9 @@ export class PlayerAssignmentsManager extends NetworkBehavior {
 	}
 
 	@RPC.Method({
-		allowedEndpoints: RPCAllowedEndpoints.CLIENT_TO_SERVER
+		allowedEndpoints: RPC.AllowedEndpoints.CLIENT_TO_SERVER
 	})
-	public requestFactionAssignment(factionId: string, params: RPC.RPCIncomingParams = RPC.DefaultIncomingParams) {
+	public requestFactionAssignment(factionId: string, params: RPC.IncomingParams = RPC.DefaultIncomingParams) {
 		assert(params.sender);
 
 		const faction = SpawnManager.getNetworkBehaviorById(factionId) as Faction | undefined;
@@ -48,9 +48,9 @@ export class PlayerAssignmentsManager extends NetworkBehavior {
 	} 
 
 	@RPC.Method({
-		allowedEndpoints: RPCAllowedEndpoints.CLIENT_TO_SERVER
+		allowedEndpoints: RPC.AllowedEndpoints.CLIENT_TO_SERVER
 	})
-	public requestUnitCommandAssumption(unitId: string, params: RPC.RPCIncomingParams = RPC.DefaultIncomingParams) {
+	public requestUnitCommandAssumption(unitId: string, params: RPC.IncomingParams = RPC.DefaultIncomingParams) {
 		assert(params.sender);
 
 		const unit = SpawnManager.getNetworkBehaviorById(unitId) as CommandUnit | undefined;

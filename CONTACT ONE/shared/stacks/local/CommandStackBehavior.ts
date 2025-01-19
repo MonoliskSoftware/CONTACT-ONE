@@ -3,7 +3,7 @@ import { CameraModule } from "CONTACT ONE/shared/players/local/cameras/CameraMod
 import { CameraUtils } from "CONTACT ONE/shared/players/local/cameras/CameraUtils";
 import { ControlModule } from "CONTACT ONE/shared/players/local/controls/ControlModule";
 import { NetworkVariable } from "CORP/shared/Scripts/Networking/NetworkVariable";
-import { RPC, RPCAccessPolicy, RPCAllowedEndpoints } from "CORP/shared/Scripts/Networking/RPC";
+import { RPC } from "CORP/shared/Scripts/Networking/RPC";
 import { CommandStackComponent } from "./gui/CommandStackComponent";
 import { StackBehavior } from "./StackBehavior";
 
@@ -109,8 +109,8 @@ export class CommandStackBehavior extends StackBehavior {
 	public readonly guiComponent = CommandStackComponent;
 
 	@RPC.Method({
-		allowedEndpoints: RPCAllowedEndpoints.CLIENT_TO_SERVER,
-		accessPolicy: RPCAccessPolicy.OWNER
+		allowedEndpoints: RPC.AllowedEndpoints.CLIENT_TO_SERVER,
+		accessPolicy: RPC.AccessPolicy.OWNER
 	})
 	updateViewerPosition(position: Vector3) {
 		const model = this.viewer.getValue();

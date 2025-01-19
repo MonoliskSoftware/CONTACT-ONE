@@ -1,7 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { ServerSideOnly } from "CORP/shared/Libraries/Utilities";
 import { GameObject } from "CORP/shared/Scripts/Componentization/GameObject";
 import { NetworkBehavior } from "CORP/shared/Scripts/Networking/NetworkBehavior";
 import { NetworkVariable } from "CORP/shared/Scripts/Networking/NetworkVariable";
+import { RPC } from "CORP/shared/Scripts/Networking/RPC";
 import { SpawnManager } from "CORP/shared/Scripts/Networking/SpawnManager";
 import { CommandUnit } from "../elements/CommandUnit";
 import { Unit } from "../elements/Unit";
@@ -51,17 +53,11 @@ export abstract class BaseOrder<U extends Unit<any, any>, T> extends NetworkBeha
 	}
 
 	/**
-	 * @returns An array of units assigned to this order.
-	 */
-	public getAssignedUnits(): U[] {
-		return this.assignedUnitIds.getValue().map(id => SpawnManager.getNetworkBehaviorById(id) as U);
-	}
-
-	/**
 	 * Assigns the supplied unit to this order.
 	 * 
 	 * @returns True if the unit was not assigned to this order and now is, else false.
 	 */
+	@ServerSideOnly
 	public assignUnit(unit: U): boolean {
 		if (this.isUnitAssigned(unit)) return false;
 
@@ -73,6 +69,7 @@ export abstract class BaseOrder<U extends Unit<any, any>, T> extends NetworkBeha
 	/**
 	 * Sets assigned units to the array provided.
 	 */
+	@ServerSideOnly
 	public setAssignedUnits(units: U[]): void {
 		this.assignedUnitIds.setValue(units.map(unit => unit.getId()));
 	}
@@ -82,6 +79,7 @@ export abstract class BaseOrder<U extends Unit<any, any>, T> extends NetworkBeha
 	 * 
 	 * @returns If the unit was assigned to the order and now isn't, else false.
 	 */
+	@ServerSideOnly
 	public removeUnit(unit: U): boolean {
 		if (!this.isUnitAssigned(unit)) return false;
 
@@ -91,10 +89,25 @@ export abstract class BaseOrder<U extends Unit<any, any>, T> extends NetworkBeha
 	}
 
 	/**
+	 * @returns An array of units assigned to this order.
+	 */
+	public getAssignedUnits(): U[] {
+		return this.assignedUnitIds.getValue().map(id => SpawnManager.getNetworkBehaviorById(id) as U);
+	}
+
+	/**
 	 * @returns If the supplied unit has been assigned to this order.
 	 */
 	public isUnitAssigned(unit: U): boolean {
 		return this.assignedUnitIds.getValue().includes(unit.getId());
+	}
+
+	@RPC.Method({
+		allowedEndpoints: RPC.AllowedEndpoints.CLIENT_TO_SERVER,
+		returnMode: RPC.ReturnMode.RETURNS
+	})
+	public tryAssignUnit(unit: U): boolean {
+
 	}
 
 	/**
