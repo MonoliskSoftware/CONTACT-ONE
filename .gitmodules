@@ -1,7 +1,7 @@
 [submodule "CORP"]
 	path = CORP
 	url = https://github.com/MonoliskSoftware/CORP.git
-	branch = module
+	branch = dev
 [submodule "CONTACT-ONE-MAP"]
 	path = CONTACT-ONE-MAP
 	url = https://github.com/MonoliskSoftware/CONTACT-ONE-MAP
