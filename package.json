@@ -22,6 +22,9 @@
   },
   "dependencies": {
     "@rbxts/object-utils": "^1.0.4",
+    "@rbxts/react": "^17.2.3",
+    "@rbxts/react-roblox": "^17.2.3",
+    "@rbxts/roact": "npm:@rbxts/react-ts@^1.0.1",
     "@rbxts/services": "^1.5.5"
   }
 }

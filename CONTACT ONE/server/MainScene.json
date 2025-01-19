@@ -1,0 +1,121 @@
+{
+	"children": [
+		{
+			"name": "SingletonContainer",
+			"components": [
+				{
+					"path": [
+						"CORP/Scripts/Networking/NetworkObject",
+						"NetworkObject"
+					],
+					"state": {}
+				},
+				{
+					"path": [
+						"CONTACT ONE/environment/EnvironmentManager",
+						"EnvironmentManager"
+					],
+					"state": {}
+				},
+				{
+					"path": [
+						"CONTACT ONE/stacks/StackManager",
+						"StackManager"
+					],
+					"state": {}
+				},
+				{
+					"path": [
+						"CONTACT ONE/players/PlayerManager",
+						"PlayerManager"
+					],
+					"state": {}
+				},
+				{
+					"path": [
+						"CONTACT ONE/players/PlayerAssignmentsManager",
+						"PlayerAssignmentsManager"
+					],
+					"state": {}
+				}
+			],
+			"children": []
+		},
+		{
+			"name": "AGF spawn",
+			"components": [
+				{
+					"path": [
+						"CONTACT ONE/entities/SpawnLocation",
+						"SpawnLocation"
+					],
+					"state": {
+						"factionTag": "AGF"
+					}
+				},
+				{
+					"path": [
+						"CORP/Scripts/Networking/NetworkObject",
+						"NetworkObject"
+					],
+					"state": {}
+				}
+			],
+			"instancePrefabs": [
+				"CONTACT ONE/assets/prefabs/SpawnLocation"
+			],
+			"transform": [
+				0,
+				0.5,
+				-100,
+				1,
+				0,
+				0,
+				0,
+				1,
+				0,
+				0,
+				0,
+				1
+			]
+		},
+		{
+			"name": "AOF spawn",
+			"components": [
+				{
+					"path": [
+						"CONTACT ONE/entities/SpawnLocation",
+						"SpawnLocation"
+					],
+					"state": {
+						"factionTag": "AOF"
+					}
+				},
+				{
+					"path": [
+						"CORP/Scripts/Networking/NetworkObject",
+						"NetworkObject"
+					],
+					"state": {}
+				}
+			],
+			"instancePrefabs": [
+				"CONTACT ONE/assets/prefabs/SpawnLocation"
+			],
+			"transform": [
+				0,
+				0.5,
+				100,
+				1,
+				0,
+				0,
+				0,
+				1,
+				0,
+				0,
+				0,
+				1
+			]
+		}
+	]
+}

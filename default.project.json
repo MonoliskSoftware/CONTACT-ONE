@@ -40,6 +40,15 @@
 					"$path": "out/CONTACT ONE/client"
 				}
 			}
+		},
+		"Lighting": {
+			"$properties": {
+				"Technology": "Future"
+			}
+		},
+		"Workspace": {
+			"$className": "Workspace",
+			"$path": "CONTACT-ONE-MAP/MEDIEVAL"
 		}
 	}
 }
