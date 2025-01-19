@@ -35,9 +35,6 @@
 			"StarterPlayerScripts": {
 				"CORP": {
 					"$path": "out/CORP/client"
-				},
-				"CONTACT ONE": {
-					"$path": "out/CONTACT ONE/client"
 				}
 			}
 		},
