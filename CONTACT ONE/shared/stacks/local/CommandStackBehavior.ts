@@ -4,6 +4,7 @@ import { CameraUtils } from "CONTACT ONE/shared/players/local/cameras/CameraUtil
 import { ControlModule } from "CONTACT ONE/shared/players/local/controls/ControlModule";
 import { NetworkVariable } from "CORP/shared/Scripts/Networking/NetworkVariable";
 import { RPC, RPCAccessPolicy, RPCAllowedEndpoints } from "CORP/shared/Scripts/Networking/RPC";
+import { CommandStackComponent } from "./gui/CommandStackComponent";
 import { StackBehavior } from "./StackBehavior";
 
 const CommandStackViewerPath = "CONTACT ONE/assets/prefabs/CommandStackViewer";
@@ -104,6 +105,8 @@ class CommandStackCameraModule {
 export class CommandStackBehavior extends StackBehavior {
 	private cameraModule: CommandStackCameraModule = undefined as unknown as CommandStackCameraModule;
 	public readonly viewer = new NetworkVariable(this, undefined as unknown as CommandStackViewer);
+
+	public readonly guiComponent = CommandStackComponent;
 
 	@RPC.Method({
 		allowedEndpoints: RPCAllowedEndpoints.CLIENT_TO_SERVER,

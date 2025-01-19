@@ -1,8 +1,20 @@
 import { GameObject } from "CORP/shared/Scripts/Componentization/GameObject";
 import { CommandUnit } from "../elements/CommandUnit";
-import { BaseOrder } from "./BaseOrder";
+import { BaseOrder, OrderConfiguration } from "./BaseOrder";
 
-export class MoveOrder extends BaseOrder<CommandUnit> {
+export interface MoveOrderParameters {
+	position: Vector3
+}
+
+export class MoveOrder extends BaseOrder<CommandUnit, MoveOrderParameters> {
+	public readonly config: OrderConfiguration = {
+		name: "move"
+	};
+
+	public executionConfig: MoveOrderParameters = {
+		position: Vector3.zero
+	};
+
 	public onStart(): void {
 
 	}
@@ -16,8 +28,10 @@ export class MoveOrder extends BaseOrder<CommandUnit> {
 	}
 
 	constructor(gameObject: GameObject) {
-		super(gameObject, {
+		super(gameObject);
+	}
 
-		});
+	public onExecutionBegan() {
+		this.getAssignedUnits().forEach(unit => unit.getDescendants().forEach(descendant => descendant.directMembers.forEach(member => member.getHumanoid().MoveTo(this.executionConfig.position))));
 	}
 }

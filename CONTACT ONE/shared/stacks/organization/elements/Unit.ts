@@ -13,7 +13,7 @@ export abstract class Unit<P extends BaseElement<any>, C extends BaseElement<any
 	 * A reference to the commander of this element.
 	 */
 	public readonly commander = new NetworkVariable(this, undefined as unknown as Character);
-	
+
 	/**
 	 * Profile describing sizing info about this unit.
 	 */
@@ -38,4 +38,12 @@ export abstract class Unit<P extends BaseElement<any>, C extends BaseElement<any
 	 * Specifies what stack this Unit class belongs to.
 	 */
 	public abstract readonly stack: GameStack;
+
+	/**
+	 * Returns a recursively fetched array of all units descending from this one.
+	 */
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	public getDescendants(): (C | Unit<any, any>)[] {
+		return this.subordinates.reduce((descendants, child) => [...descendants, ...(child instanceof Unit ? child.getDescendants() : [])], [...this.subordinates]);
+	}
 }

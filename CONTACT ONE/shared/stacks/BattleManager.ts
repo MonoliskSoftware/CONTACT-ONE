@@ -1,3 +1,5 @@
+import { Character } from "../characters/Character";
+import { Path } from "../Libraries/Path";
 import { GameObject } from "../Scripts/Componentization/GameObject";
 import { ExtractNetworkVariables } from "../Scripts/Networking/NetworkBehavior";
 import { Networking } from "../Scripts/Networking/Networking";
@@ -46,7 +48,30 @@ export class BattleManager {
 			} satisfies ExtractNetworkVariables<CommandUnit | BattleUnit> as unknown as Map<string, Networking.NetworkableTypes>)
 		});
 
-		UnitTemplates.flattenSubordinates(template.subordinates).forEach((subTemplate, index) => this.importUnit(unit, subTemplate, index + 1));
+		UnitTemplates.flattenNestedArray(template.subordinates).forEach((subTemplate, index) => this.importUnit(unit, subTemplate, index + 1));
+		UnitTemplates.flattenNestedArray(template.members).forEach((loadout, index) => {
+			const gameObject = createNetworkedGameObject("Character", unit.getGameObject());
+
+			const char = gameObject.addComponent(Character, {
+				initialNetworkVariableStates: ({
+					unit: unit
+				} satisfies ExtractNetworkVariables<Character> as unknown as Map<string, Networking.NetworkableTypes>)
+			});
+
+			const fact = unit instanceof CommandUnit ? unit.getFaction() : unit.getCommandUnit()?.getFaction();
+
+			char.getHumanoid().SetAttribute("Faction", fact?.getId());
+
+			loadout.tools.forEach(path => {
+				const t = Path.resolve(path)?.Clone();
+
+				if (t) {
+					t.Parent = char.rig.getValue();
+
+					char.getHumanoid().EquipTool(t as Tool);
+				}
+			});
+		});
 
 		return unit;
 	}

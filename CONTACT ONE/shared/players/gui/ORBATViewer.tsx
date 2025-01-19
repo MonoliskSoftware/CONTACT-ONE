@@ -3,6 +3,7 @@ import { StarterGui } from "@rbxts/services";
 import { Faction } from "CONTACT ONE/shared/stacks/organization/elements/Faction";
 import { GenericUnit } from "CONTACT ONE/shared/stacks/organization/elements/Unit";
 import { SpawnManager } from "CORP/shared/Scripts/Networking/SpawnManager";
+import { PlayerAssignmentsManager } from "../PlayerAssignmentsManager";
 import { StyleButton } from "./style/StyleButton";
 import { StyleFrame } from "./style/StyleFrame";
 import { StyleTextLabel } from "./style/StyleLabel";
@@ -209,6 +210,9 @@ export namespace ORBATViewer {
 						/>
 						<StyleButton
 							LayoutOrder={2}
+							Event={{
+								Activated: () => PlayerAssignmentsManager.singleton.requestUnitCommandAssumption(currentElement.getId())
+							}}
 						>
 							<StyleTextLabel
 								Text={"ASSUME COMMAND"}

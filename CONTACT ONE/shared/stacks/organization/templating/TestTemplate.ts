@@ -1,5 +1,6 @@
 import { GameStack } from "../../StackManager";
 import { UnitProfiles } from "../UnitProfiles";
+import { Loadouts } from "./Loadouts";
 import { UnitTemplates } from "./UnitTemplates";
 
 function merge<A, B>(a: A, b: B): A & B {
@@ -9,16 +10,18 @@ function merge<A, B>(a: A, b: B): A & B {
 	};
 }
 
-// const MotorizedInfantryProfile = {
-// 	iconId: "rbxassetid://107010730765951",
-// 	unitType: "Motorized Infantry"
-// } satisfies UnitProfile;
+const RiflemanLoadout = {
+	tools: [
+		"CONTACT ONE/assets/prefabs/ClassicSword"
+	]
+} satisfies Loadouts.CharacterLoadout;
 
 const MotorizedInfantrySquad = {
 	stack: GameStack.BATTLE_STACK,
 	subordinates: [],
 	classProfile: UnitProfiles.USProfiles.MotorizedInfantry,
 	sizeProfile: UnitProfiles.USProfiles.Squad,
+	members: [[RiflemanLoadout, 1]]
 } satisfies UnitTemplates.Template;
 
 const MotorizedInfantryPlatoon = {
@@ -28,15 +31,17 @@ const MotorizedInfantryPlatoon = {
 	],
 	classProfile: UnitProfiles.USProfiles.MotorizedInfantry,
 	sizeProfile: UnitProfiles.USProfiles.Platoon,
+	members: [[RiflemanLoadout, 1]]
 } satisfies UnitTemplates.Template;
 
 const MotorizedInfantryCompany = {
-	stack: GameStack.BATTLE_STACK,
+	stack: GameStack.COMMAND_STACK,
 	subordinates: [
 		[MotorizedInfantryPlatoon, 3]
 	],
 	classProfile: UnitProfiles.USProfiles.MotorizedInfantry,
 	sizeProfile: UnitProfiles.USProfiles.Company,
+	members: [[RiflemanLoadout, 1]]
 } satisfies UnitTemplates.Template;
 
 const MotorizedInfantryBattalion = {
@@ -46,6 +51,7 @@ const MotorizedInfantryBattalion = {
 	],
 	classProfile: UnitProfiles.USProfiles.MotorizedInfantry,
 	sizeProfile: UnitProfiles.USProfiles.Battalion,
+	members: [[RiflemanLoadout, 1]]
 } satisfies UnitTemplates.Template;
 
 const MotorizedInfantryBrigade = {
@@ -55,7 +61,8 @@ const MotorizedInfantryBrigade = {
 	],
 	classProfile: UnitProfiles.USProfiles.MotorizedInfantry,
 	sizeProfile: UnitProfiles.USProfiles.Brigade,
+	members: [[RiflemanLoadout, 1]]
 } satisfies UnitTemplates.Template;
 
-export { MotorizedInfantryBrigade as TestTemplate };
+export { MotorizedInfantryCompany as TestTemplate };
 

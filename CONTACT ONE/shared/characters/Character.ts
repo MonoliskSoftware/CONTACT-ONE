@@ -1,9 +1,12 @@
 import { RunService } from "@rbxts/services";
+import { SpawnLocation } from "../entities/SpawnLocation";
 import { Signal } from "../Libraries/Signal";
 import { ServerSideOnly } from "../Libraries/Utilities";
 import { NetworkBehavior } from "../Scripts/Networking/NetworkBehavior";
 import { NetworkVariable } from "../Scripts/Networking/NetworkVariable";
-import { GenericUnit } from "../stacks/organization/elements/Unit";
+import { BattleUnit } from "../stacks/organization/elements/BattleUnit";
+import { CommandUnit } from "../stacks/organization/elements/CommandUnit";
+import { GenericUnit, Unit } from "../stacks/organization/elements/Unit";
 
 const PathToRig = "CONTACT ONE/assets/prefabs/HumanoidRig";
 
@@ -20,11 +23,11 @@ export class Character extends NetworkBehavior {
 	 * Reference to the unit this character is assigned to, or undefined if none.
 	 */
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	public readonly unit = new NetworkVariable(this, undefined as unknown as GenericUnit);
+	public readonly unit = new NetworkVariable(this, undefined as unknown as Unit<any, any>);
 	/**
 	 * Reference to the rig instance.
 	 */
-	private readonly rig = new NetworkVariable<Rig>(this, undefined as unknown as Rig);
+	public readonly rig = new NetworkVariable<Rig>(this, undefined as unknown as Rig);
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	private lastUnit: GenericUnit | undefined;
 
@@ -36,6 +39,10 @@ export class Character extends NetworkBehavior {
 		this.applyUnit();
 
 		this.unit.onValueChanged.connect(() => this.applyUnit());
+
+		if (RunService.IsServer()) {
+			this.rig.getValue().PivotTo(SpawnLocation.getSpawnLocationOfFaction((this.unit.getValue() as CommandUnit | BattleUnit).getFaction()?.name.getValue() ?? "")?.getGameObject().getInstance().GetPivot() ?? CFrame.identity);
+		}
 	}
 
 	public willRemove(): void {
@@ -73,5 +80,9 @@ export class Character extends NetworkBehavior {
 		rig.ModelStreamingMode = Enum.ModelStreamingMode.Atomic;
 		
 		this.rig.setValue(rig);
+	}
+
+	public getHumanoid(): Humanoid {
+		return this.rig.getValue().FindFirstChild("Humanoid") as Humanoid;
 	}
 }

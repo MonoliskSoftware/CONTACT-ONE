@@ -1,6 +1,9 @@
+import React from "@rbxts/react";
 import { StackBehavior } from "./StackBehavior";
 
 export class BattleStackBehavior extends StackBehavior {
+	public readonly guiComponent = () => React.createElement("TextButton");
+	
 	public onActivated(): void {
 		print("Battle stack activating!");
 	}

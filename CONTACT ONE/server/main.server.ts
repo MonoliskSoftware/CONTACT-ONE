@@ -21,6 +21,10 @@ const q: Scenarios.ORBAT = {
 		{
 			name: "AGF",
 			rootUnits: [TestTemplate]
+		},
+		{
+			name: "AOF",
+			rootUnits: [TestTemplate]
 		}
 	]
 };

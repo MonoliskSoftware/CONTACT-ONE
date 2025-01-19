@@ -1,6 +1,7 @@
 import Object from "@rbxts/object-utils";
 import { RunService } from "@rbxts/services";
 import { BaseController } from "../controllers/BaseController";
+import { Signal } from "../Libraries/Signal";
 import { ClientSideOnly } from "../Libraries/Utilities";
 import { GameObject } from "../Scripts/Componentization/GameObject";
 import { ExtractNetworkVariables, NetworkBehavior } from "../Scripts/Networking/NetworkBehavior";
@@ -22,7 +23,7 @@ import { PlayerState } from "./PlayerState";
  */
 export class PlayerBehavior extends NetworkBehavior implements BaseController {
 	public readonly player = new NetworkVariable<Player>(this, undefined as unknown as Player);
-	public readonly state = new NetworkVariable(this, PlayerState.LOBBY);
+	public readonly state = new NetworkVariable<PlayerState>(this, PlayerState.LOBBY);
 	public readonly faction = new NetworkVariable(this, undefined as unknown as Faction);
 
 	// Stacks
@@ -30,6 +31,7 @@ export class PlayerBehavior extends NetworkBehavior implements BaseController {
 	private stackBehaviors = undefined as unknown as { [key in GameStack]: StackBehavior };
 
 	public readonly stack = new NetworkVariable<GameStack>(this, GameStack.NONE);
+	public readonly commandedUnitsChanged = new Signal<[]>(`${this.getId()}CommandChanged`);
 
 	private readonly playerModule = RunService.IsClient() ? new PlayerModule() : undefined;
 	private readonly guiManager = RunService.IsClient() && new GuiManager(this);
@@ -61,6 +63,8 @@ export class PlayerBehavior extends NetworkBehavior implements BaseController {
 			this.applyStack();
 		});
 
+		this.stack.onValueChanged.connect(() => this.applyStack());
+
 		if (RunService.IsClient()) this.getGuiManager().initialize();
 	}
 
@@ -91,10 +95,18 @@ export class PlayerBehavior extends NetworkBehavior implements BaseController {
 	}
 
 	public commandUnitOnCommandTaken(unit: CommandUnit) {
-		if (this.commandedUnits.includes(unit)) this.commandedUnits.push(unit);
+		if (!this.commandedUnits.includes(unit)) this.commandedUnits.push(unit);
+
+		this.commandedUnitsChanged.fire();
 	}
 
 	public commandUnitOnCommandRemoved(unit: CommandUnit) {
 		this.commandedUnits.remove(this.commandedUnits.indexOf(unit));
+
+		this.commandedUnitsChanged.fire();
+	}
+
+	public getCurrentStackBehavior(): StackBehavior {
+		return this.currentStackBehavior;
 	}
 }

@@ -1,12 +1,10 @@
 import { GameStack } from "../../StackManager";
 import { UnitProfiles } from "../UnitProfiles";
+import { Loadouts } from "./Loadouts";
+
+export type NestedArray<T> = [T, number][];
 
 export namespace UnitTemplates {
-	/**
-	 * Used to describe the subordinates of a unit.
-	 */
-	export type SubordinateArray = [Template, number][];
-
 	/**
 	 * Describes a template for a unit.
 	 */
@@ -37,18 +35,21 @@ export namespace UnitTemplates {
 		 * ```
 		 * 4 infantry squads then 2 armor squads will be added as subordinates. 
 		 */
-		readonly subordinates: SubordinateArray;
+		readonly subordinates: NestedArray<Template>;
 		/**
 		 * Describes what stack this template should be placed in on spawn.
 		 */
 		readonly stack: GameStack;
+		/**
+		 * Describes the member characters of this unit.
+		 * 
+		 * The first unit will become the commander.
+		 */
+		readonly members: NestedArray<Loadouts.CharacterLoadout>;
 	}
 	
-	/**
-	 * Flattens a SubordinateArray into a one-dimensional array of templates.
-	 */
-	export function flattenSubordinates(subordinates: SubordinateArray): Template[] {
-		return subordinates.reduce((accumulator, current) => {
+	export function flattenNestedArray<T>(array: NestedArray<T>): T[] {
+		return array.reduce((accumulator, current) => {
 			const newTemplates = [];
 
 			for (let i = 0; i < current[1]; i++) {
@@ -56,6 +57,6 @@ export namespace UnitTemplates {
 			}
 
 			return [...accumulator, ...newTemplates];
-		}, [] as UnitTemplates.Template[]);
+		}, [] as T[]);
 	}
 }
