@@ -100,40 +100,34 @@ const SubordinateSelector: React.FC<{
 	);
 };
 
+function castLookRay(camera: Camera) {
+	const result = Workspace.Raycast(camera.CFrame.Position, camera.CFrame.LookVector.mul(1024));
+
+	return result ? result.Position : camera.CFrame.Position.add(camera.CFrame.LookVector.mul(1024));
+}
+
 const Vector3Editor: React.FC<{
 	enabled: boolean,
 	setValue: (value: Vector3) => void
 }> = ({ enabled, setValue }) => {
-	const [vPosition, setVPosition] = useState<[Vector3, UDim2, boolean]>([Vector3.zero, UDim2.fromOffset(0, 0), true]);
+	const [isVisible, setIsVisible] = useState(false);
+	const [position, setPosition] = useState<[Vector3, UDim2]>([Vector3.zero, UDim2.fromScale(0, 0)]);
+	// const [vPosition, setVPosition] = useState<[Vector3, UDim2, boolean]>([Vector3.zero, UDim2.fromOffset(0, 0), true]);
 
 	useEffect(() => {
 		RunService.BindToRenderStep("Vector3EditorUpdate", Enum.RenderPriority.Camera.Value, () => {
-			assert(Workspace.CurrentCamera);
+			const camera = Workspace.CurrentCamera as Camera;
+			const currentPosition = enabled ? castLookRay(camera) : position[0];
 
-			let override = vPosition[0];
+			const [screenPosition, visible] = camera.WorldToScreenPoint(currentPosition);
 
-			if (enabled) {
-				const cf = Workspace.CurrentCamera.CFrame;
-				const result = Workspace.Raycast(cf.Position, cf.LookVector.mul(1024));
+			setPosition([currentPosition, UDim2.fromOffset(screenPosition.X, screenPosition.Y)]);
 
-				if (result)
-					override = result.Position;
-			}
-
-
-			const [v, i] = Workspace.CurrentCamera.WorldToViewportPoint(override);
-			const a = UDim2.fromOffset(v.X, v.Y);
-			setVPosition([override, a, i]);
+			if (visible !== isVisible) setIsVisible(visible);
 		});
 
-		if (!enabled) setValue(vPosition[0]);
-
-		return () => {
-			RunService.UnbindFromRenderStep("Vector3EditorUpdate");
-		};
+		return () => RunService.UnbindFromRenderStep("Vector3EditorUpdate");
 	}, [enabled]);
-
-	assert(Workspace.CurrentCamera);
 
 	return createPortal((<>
 		<screengui>
@@ -141,8 +135,8 @@ const Vector3Editor: React.FC<{
 				Size={UDim2.fromOffset(32, 32)}
 				AnchorPoint={Vector2.one.mul(0.5)}
 				BorderSizePixel={0}
-				Position={vPosition[1]}
-				Visible={vPosition[2]}
+				Position={position[1]}
+				Visible={isVisible}
 				BackgroundColor3={Color3.fromHex("0055ff")}
 			>
 				<uicorner
@@ -272,7 +266,7 @@ const OrderEditor: React.FC<{
 						FontFace={Font.fromName("Roboto", Enum.FontWeight.Bold)}
 					/>
 				</StyleButton>
-			</> : <textlabel Text={"NO SELECTED ORDER"} />
+			</> : <></>
 		}
 		<uilistlayout
 			FillDirection={Enum.FillDirection.Vertical}
