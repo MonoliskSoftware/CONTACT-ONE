@@ -29,6 +29,8 @@ export class CommandUnit extends Unit<Faction | CommandUnit, CommandUnit | Battl
 	public readonly stack = GameStack.COMMAND_STACK;
 
 	public onStart(): void {
+		super.onStart();
+		
 		this.applyAncestry();
 
 		this.parent.onValueChanged.connect(() => this.applyAncestry());
@@ -37,6 +39,8 @@ export class CommandUnit extends Unit<Faction | CommandUnit, CommandUnit | Battl
 	}
 
 	public willRemove(): void {
+		super.willRemove();
+		
 		this.lastParent = undefined;
 	}
 

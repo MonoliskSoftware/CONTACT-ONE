@@ -6,6 +6,10 @@ import { NetworkVariable } from "../Scripts/Networking/NetworkVariable";
 import { Serializable } from "../Scripts/Serialization/Serializable";
 import { EnvironmentDescriptions } from "./EnvironmentDescriptions";
 
+const k: EnvironmentDescriptions.LightingEffectDescription<"ColorCorrectionEffect"> = ["ColorCorrectionEffect", {
+
+}];
+
 const DefaultBakedLighting = {
 	skyBox: {
 		SkyboxBk: "rbxassetid://6444884337",
@@ -23,16 +27,22 @@ const DefaultBakedLighting = {
 			Brightness: 0.1,
 			Saturation: -0.3,
 			Contrast: 0.3
-		} as Partial<ColorCorrectionEffect>],
+		} as Partial<InstanceProperties<ColorCorrectionEffect>>],
 		["BloomEffect", {
 			Enabled: true,
 			Intensity: 1,
 			Size: 24,
-			Threshold: 2
-		} as Partial<BloomEffect>]
+			Threshold: 1.5
+		} as Partial<InstanceProperties<BloomEffect>>],
+		["SunRaysEffect", {
+			Intensity: 0.15,
+			Spread: 1
+		} as Partial<InstanceProperties<SunRaysEffect>>]
 	],
 	properties: {
-		Brightness: 3
+		Brightness: 10,
+		Ambient: new Color3(0, 0, 0),
+		OutdoorAmbient: Color3.fromRGB(40, 40, 40)
 	}
 } satisfies EnvironmentDescriptions.BakedLightingDescription;
 

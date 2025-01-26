@@ -7,20 +7,18 @@ import { GuiManagerContext } from "CONTACT ONE/shared/players/gui/GuiManagerCont
 import { StyleButton } from "CONTACT ONE/shared/players/gui/style/StyleButton";
 import { StyleFrame } from "CONTACT ONE/shared/players/gui/style/StyleFrame";
 import { StyleTextLabel } from "CONTACT ONE/shared/players/gui/style/StyleLabel";
-import { LogGroup } from "CORP/shared/Libraries/Logging";
 import { Constructable, dict } from "CORP/shared/Libraries/Utilities";
 import { CommandUnit } from "../../organization/elements/CommandUnit";
 import { Unit } from "../../organization/elements/Unit";
 import { BaseOrder } from "../../organization/orders/BaseOrder";
+import { GuardOrder } from "../../organization/orders/GuardOrder";
 import { MoveOrder } from "../../organization/orders/MoveOrder";
 import { CommandStackBehavior } from "../CommandStackBehavior";
 import { StackComponentProps } from "../StackBehavior";
 
-const CommandStackComponentLogGroup: LogGroup = {
-	prefix: "COMMAND_STACK.GUI"
-};
+const ALL_ORDERS = [MoveOrder, GuardOrder];
 
-const SubordinateSelectorUnit: React.FC<{
+const UnitSelectorUnit: React.FC<{
 	unit: Unit<any, any>,
 	selected: boolean,
 	toggleSelected: () => void
@@ -57,12 +55,12 @@ const SubordinateSelectorUnit: React.FC<{
 	);
 };
 
-const SubordinateSelector: React.FC<{
+const UnitSelector: React.FC<{
 	rootUnit: Unit<any, Unit<any, any>>,
 	selection: Unit<any, any>[],
 	setSelection: (action: Unit<any, any>[]) => void;
 }> = ({ rootUnit, selection, setSelection }) => {
-	const [subordinates, setSubordinates] = useState(rootUnit.subordinates);
+	const [subordinates, setSubordinates] = useState([...rootUnit.subordinates, rootUnit]);
 
 	useEffect(() => {
 		const subAddedConn = rootUnit.subordinateAdded.connect(sub => setSubordinates([...subordinates, sub]));
@@ -85,7 +83,7 @@ const SubordinateSelector: React.FC<{
 				HorizontalFlex={Enum.UIFlexAlignment.Fill}
 				SortOrder={Enum.SortOrder.LayoutOrder}
 			/>
-			{subordinates.map(sub => <SubordinateSelectorUnit
+			{subordinates.map(sub => <UnitSelectorUnit
 				unit={sub}
 				selected={selection.includes(sub)}
 				toggleSelected={() => {
@@ -112,9 +110,10 @@ const Vector3Editor: React.FC<{
 }> = ({ enabled, setValue }) => {
 	const [isVisible, setIsVisible] = useState(false);
 	const [position, setPosition] = useState<[Vector3, UDim2]>([Vector3.zero, UDim2.fromScale(0, 0)]);
-	// const [vPosition, setVPosition] = useState<[Vector3, UDim2, boolean]>([Vector3.zero, UDim2.fromOffset(0, 0), true]);
 
 	useEffect(() => {
+		if (!enabled) setValue(position[0]);
+
 		RunService.BindToRenderStep("Vector3EditorUpdate", Enum.RenderPriority.Camera.Value, () => {
 			const camera = Workspace.CurrentCamera as Camera;
 			const currentPosition = enabled ? castLookRay(camera) : position[0];
@@ -210,6 +209,8 @@ const OrderPropertiesEditor: React.FC<{
 
 						newParams[key] = newValue;
 
+						print(newParams);
+
 						order.trySetParameters(newParams);
 					}} />;
 				})
@@ -245,7 +246,7 @@ const OrderEditor: React.FC<{
 				<OrderPropertiesEditor
 					order={order}
 				/>
-				<SubordinateSelector
+				<UnitSelector
 					rootUnit={rootUnit}
 					selection={selection}
 					setSelection={(newSelection: Unit<any, any>[]) => {
@@ -281,7 +282,7 @@ const OrderCreator: React.FC<{
 	rootUnit: CommandUnit,
 	setOrder: (state: SetStateAction<BaseOrder<any, any> | undefined>) => void
 }> = ({ rootUnit, setOrder }) => {
-	const [availableOrders, setAvailableOrders] = useState<Constructable<BaseOrder<any, any>>[]>([MoveOrder]);
+	const [availableOrders, setAvailableOrders] = useState<Constructable<BaseOrder<any, any>>[]>(ALL_ORDERS);
 
 	return (
 		<StyleFrame
@@ -297,6 +298,7 @@ const OrderCreator: React.FC<{
 				return <StyleButton
 					Event={{
 						Activated: () => {
+							print(rootUnit);
 							const order = rootUnit.createOrder(availableOrder, false);
 
 							setOrder(order);
@@ -333,6 +335,12 @@ export const CommandStackComponent: React.FC<StackComponentProps<CommandStackBeh
 		return () => conn.disconnect();
 	});
 
+	useEffect(() => {
+		const conn = currentOrder?.removing.connect(() => setCurrentOrder(undefined));
+
+		return () => conn?.disconnect();
+	}, [currentOrder]);
+
 	return (
 		<screengui>
 			<OrderEditor
@@ -360,36 +368,6 @@ export const CommandStackComponent: React.FC<StackComponentProps<CommandStackBeh
 			<uilistlayout
 				FillDirection={Enum.FillDirection.Horizontal}
 			/>
-			{/* <textbutton
-				Text={"CREATE MOVE ORDER"}
-				Size={UDim2.fromOffset(200, 200)}
-				Event={{
-					Activated: () => {
-						Logging.print(CommandStackComponentLogGroup, `Received instruction to create move order. Current unit id: ${controlledUnit?.getId()}`);
-
-						const order = controlledUnit?.createOrder(MoveOrder, {
-							position: props.behavior.viewer.getValue().GetPivot().Position
-						});
-
-						Logging.print(CommandStackComponentLogGroup, `Resultant order id: ${order?.getId()}`);
-
-						setCurrentOrder(order);
-					}
-				}}
-			/>
-			{<textbutton
-				Text={"EXECUTE ORDER"}
-				Size={UDim2.fromOffset(200, 50)}
-				Visible={currentOrder !== undefined}
-				Event={{
-					Activated: () => {
-						assert(currentOrder);
-
-						currentOrder.tryExecute();
-					}
-				}}
-			/>}
-			{controlledUnit?.subordinates.map(sub => <UnitUnderOrders unit={sub} currentOrder={currentOrder} />)} */}
 		</screengui>
 	);
 };

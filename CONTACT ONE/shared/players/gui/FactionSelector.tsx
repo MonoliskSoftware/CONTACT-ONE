@@ -94,7 +94,7 @@ export namespace FactionSelector {
 				if (behavior instanceof Faction) setFactions(previousFactions => [...previousFactions, behavior]);
 			});
 
-			const removingConnection = SpawnManager.onNetworkBehaviorDestroyed.connect(behavior => {
+			const removingConnection = SpawnManager.onNetworkBehaviorDestroying.connect(behavior => {
 				if (behavior instanceof Faction) setFactions(previousFactions => previousFactions.filter(other => other !== behavior));
 			});
 

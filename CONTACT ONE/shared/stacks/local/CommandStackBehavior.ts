@@ -20,7 +20,12 @@ function lerp(a: number, b: number, alpha: number) {
 
 class CommandStackCameraModule {
 	// Camera state data
-	private focusPoint = Vector3.zero;
+	/**
+	 * Whether the camera is tracking something.
+	 */
+	private tracking = false;
+	private targetPoint = Vector3.zero;
+	private lastReplicateTime = tick();
 
 	// Camera settings data
 	private readonly bounds = new Region3(new Vector3(-1024, -512, -1024), new Vector3(1024, 512, 1024));
@@ -57,7 +62,7 @@ class CommandStackCameraModule {
 	private getMoveVector() {
 		assert(this.camera);
 
-		const absolute = this.camera.CFrame.ToWorldSpace(CFrame.lookAt(Vector3.zero, this.controlModule.GetMoveVector())).LookVector.mul(new Vector3(1, 0, 1));
+		const absolute = this.camera.CFrame.ToWorldSpace(CFrame.lookAt(Vector3.zero, this.controlModule.GetMoveVector())).LookVector.mul(new Vector3(1, 0, 1)).Unit;
 
 		return !CameraUtils.IsFiniteVector3(absolute) ? Vector3.zero : absolute;
 	}
@@ -76,22 +81,42 @@ class CommandStackCameraModule {
 		return lerp(this.speedRange.Min, this.speedRange.Max, this.getDistanceFraction());
 	}
 
+	private getCurrentHeight() {
+		const result = Workspace.Spherecast(new Vector3(this.targetPoint.X, 1000, this.targetPoint.Z), 7, new Vector3(0, -1024, 0));
+
+		return result ? result.Position.Y : this.targetPoint.Y;
+	}
+
 	private applyCameraDistance() {
 		Players.LocalPlayer.CameraMinZoomDistance = this.distanceRange.Min;
 		Players.LocalPlayer.CameraMaxZoomDistance = this.distanceRange.Max;
 	}
 
+	private getFinalPosition(height: number) {
+		return new Vector3(this.targetPoint.X, height, this.targetPoint.Z);
+	}
+
 	private onRenderStep(deltaTime: number) {
+		const height = this.getCurrentHeight();
+		const final = this.getFinalPosition(height);
+
+		if (tick() - this.lastReplicateTime > 1) {
+			this.behavior.updateViewerPosition(final);
+			this.lastReplicateTime = tick();
+		}
+
 		if (this.camera) {
 			const viewer = this.behavior.viewer.getValue();
 
 			this.camera.CameraSubject = viewer.CameraNode;
 
-			viewer.CameraNode.Position = viewer.CameraNode.Position.Lerp(viewer.Root.Position, deltaTime * 10);
+			viewer.CameraNode.Position = viewer.CameraNode.Position.Lerp(final, deltaTime * 10);
+			// viewer.CameraNode.Position = new Vector3(viewer.CameraNode.Position.X, math.max(viewer.CameraNode.Position.Y, height), viewer.CameraNode.Position.Z);
 
 			this.applyCameraDistance();
 
-			this.behavior.updateViewerPosition(viewer.Root.Position.add(this.getMoveVector().mul(this.getCurrentSpeed() * deltaTime)));
+			if (!this.tracking)
+				this.targetPoint = this.targetPoint.add(this.getMoveVector().mul(this.getCurrentSpeed() * deltaTime));
 		}
 	}
 
@@ -114,7 +139,7 @@ export class CommandStackBehavior extends StackBehavior {
 	})
 	updateViewerPosition(position: Vector3) {
 		const model = this.viewer.getValue();
-		const result: RaycastResult | undefined = undefined as (RaycastResult | undefined)/*Workspace.Raycast(new Vector3(position.X, 1024, position.Y), new Vector3(0, -2048, 0))*/;
+		const result: RaycastResult | undefined = undefined as (RaycastResult | undefined);
 		const final = new Vector3(position.X, result ? result.Position.Y : 8, position.Z);
 
 		model.Root.Position = final;

@@ -13,13 +13,15 @@ export class BattleUnit extends Unit<BattleUnit | CommandUnit, BattleUnit> {
 	public readonly subordinates: BattleUnit[] = [];
 
 	public onStart(): void {
+		super.onStart();
+		
 		this.applyAncestry();
 
 		this.parent.onValueChanged.connect(parent => this.applyAncestry());
 	}
 
 	public willRemove(): void {
-
+		super.willRemove();
 	}
 
 	protected getSourceScript(): ModuleScript {

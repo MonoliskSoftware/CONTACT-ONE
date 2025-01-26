@@ -58,7 +58,7 @@ export class BattleManager {
 				} satisfies ExtractNetworkVariables<Character> as unknown as Map<string, Networking.NetworkableTypes>)
 			});
 
-			unit.directMembers.push(char);
+			if (index === 0) unit.commander.setValue(char);
 
 			const fact = unit instanceof CommandUnit ? unit.getFaction() : unit.getCommandUnit()?.getFaction();
 

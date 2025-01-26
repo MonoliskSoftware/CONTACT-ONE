@@ -3,12 +3,12 @@ import { NetworkVariable } from "CORP/shared/Scripts/Networking/NetworkVariable"
 import { CommandUnit } from "../elements/CommandUnit";
 import { BaseOrder } from "./BaseOrder";
 
-export const MoveOrderParameters = {
-	position: Vector3.zero
+export const GuardOrderParameters = {
+	
 };
 
-export class MoveOrder extends BaseOrder<CommandUnit, typeof MoveOrderParameters> {
-	public readonly executionParameterSpecification = MoveOrderParameters;
+export class GuardOrder extends BaseOrder<CommandUnit, typeof GuardOrderParameters> {
+	public readonly executionParameterSpecification = GuardOrderParameters;
 	public readonly executionParameters = new NetworkVariable(this, this.executionParameterSpecification);
 
 	public onStart(): void {
@@ -28,14 +28,12 @@ export class MoveOrder extends BaseOrder<CommandUnit, typeof MoveOrderParameters
 	}
 
 	public onExecutionBegan() {
-		// print(this.executionParameters.getValue());
 		
-		// this.getAssignedUnits().forEach(unit => unit.getMembersRecursive().forEach(member => member.getHumanoid().MoveTo(this.executionParameters.getValue().position)));
 	}
 
 	public getConfig() {
 		return {
-			name: "Move"
+			name: "Guard"
 		};
 	}
 }

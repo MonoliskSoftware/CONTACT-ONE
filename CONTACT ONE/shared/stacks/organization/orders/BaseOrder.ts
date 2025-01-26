@@ -191,6 +191,7 @@ export abstract class BaseOrder<U extends Unit<any, any>, T extends dict> extend
 
 	@ServerSideOnly
 	public execute() {
+		this.getAssignedUnits().forEach(unit => unit.getMembersRecursive().forEach(member => member.onOrderExecuted(this)));
 		this.onExecutionBegan();
 	}
 

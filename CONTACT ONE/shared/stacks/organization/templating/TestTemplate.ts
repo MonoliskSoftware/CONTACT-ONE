@@ -17,7 +17,7 @@ const RiflemanLoadout = {
 } satisfies Loadouts.CharacterLoadout;
 
 const MotorizedInfantrySquad = {
-	stack: GameStack.BATTLE_STACK,
+	stack: GameStack.COMMAND_STACK,
 	subordinates: [],
 	classProfile: UnitProfiles.USProfiles.MotorizedInfantry,
 	sizeProfile: UnitProfiles.USProfiles.Squad,
@@ -25,13 +25,13 @@ const MotorizedInfantrySquad = {
 } satisfies UnitTemplates.Template;
 
 const MotorizedInfantryPlatoon = {
-	stack: GameStack.BATTLE_STACK,
+	stack: GameStack.COMMAND_STACK,
 	subordinates: [
 		[MotorizedInfantrySquad, 3]
 	],
 	classProfile: UnitProfiles.USProfiles.MotorizedInfantry,
 	sizeProfile: UnitProfiles.USProfiles.Platoon,
-	members: [[RiflemanLoadout, 1]]
+	members: [[RiflemanLoadout, 4]]
 } satisfies UnitTemplates.Template;
 
 const MotorizedInfantryCompany = {
@@ -41,7 +41,7 @@ const MotorizedInfantryCompany = {
 	],
 	classProfile: UnitProfiles.USProfiles.MotorizedInfantry,
 	sizeProfile: UnitProfiles.USProfiles.Company,
-	members: [[RiflemanLoadout, 1]]
+	members: [[RiflemanLoadout, 6]]
 } satisfies UnitTemplates.Template;
 
 const MotorizedInfantryBattalion = {
@@ -51,7 +51,7 @@ const MotorizedInfantryBattalion = {
 	],
 	classProfile: UnitProfiles.USProfiles.MotorizedInfantry,
 	sizeProfile: UnitProfiles.USProfiles.Battalion,
-	members: [[RiflemanLoadout, 1]]
+	members: [[RiflemanLoadout, 4]]
 } satisfies UnitTemplates.Template;
 
 const MotorizedInfantryBrigade = {
@@ -64,5 +64,5 @@ const MotorizedInfantryBrigade = {
 	members: [[RiflemanLoadout, 1]]
 } satisfies UnitTemplates.Template;
 
-export { MotorizedInfantryCompany as TestTemplate };
+export { MotorizedInfantrySquad as TestTemplate };
 
