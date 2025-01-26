@@ -9,10 +9,11 @@ import { NetworkVariable } from "../Scripts/Networking/NetworkVariable";
 import { SpawnManager } from "../Scripts/Networking/SpawnManager";
 import { BattleUnit } from "../stacks/organization/elements/BattleUnit";
 import { CommandUnit } from "../stacks/organization/elements/CommandUnit";
-import { GenericUnit, Unit } from "../stacks/organization/elements/Unit";
+import { Unit } from "../stacks/organization/elements/Unit";
 import { BaseOrder } from "../stacks/organization/orders/BaseOrder";
 import { GuardOrder } from "../stacks/organization/orders/GuardOrder";
 import { MoveOrder } from "../stacks/organization/orders/MoveOrder";
+import { NetworkBehaviorVariableBinder } from "../utilities/NetworkVariableBinder";
 import { Pathfinding } from "./battlethink/Pathfinding";
 import { CharacterPhysics } from "./CharacterPhysics";
 import { Formations } from "./Formations";
@@ -27,11 +28,15 @@ export interface Rig extends Model {
 	HumanoidRootPart: BasePart,
 }
 
+const MIN_PHYSICAL_ATTACK_DISTANCE = 5;
+
 export class Character extends NetworkBehavior {
 	/**
 	 * Reference to the unit this character is assigned to, or undefined if none.
 	 */
 	public readonly unit = new NetworkVariable(this, undefined as unknown as Unit<any, any>);
+
+	private readonly unitBinder = new NetworkBehaviorVariableBinder(this as Character, this.unit, "memberOnAdded", "memberOnRemoving");
 
 	/**
 	 * Reference to the rig instance.
@@ -46,15 +51,16 @@ export class Character extends NetworkBehavior {
 	private readonly collector = new Collector();
 
 	private currentOrder: BaseOrder<any, any> | undefined;
-	private lastUnit: GenericUnit | undefined;
 	private pathfindingAgent = undefined as unknown as Pathfinding.Agent;
 
 	// Guard order state
 	private assignedGuardNode: Vector3 | undefined;
-	/**
-	 * Used to keep track of the current goal position, set by different orders. When the character is done doing something different, like attacking an enemy, it will pathfind its way here.
-	 */
-	private intendedGoal: Vector3 | undefined;
+
+	// Priority level:
+	// Top: attack trips
+	private currentAttackTrip: Pathfinding.Trip | undefined;
+	// Medium: order trips
+	private currentOrderTrip: Pathfinding.Trip | undefined;
 
 	public onStart(): void {
 		if (RunService.IsServer()) {
@@ -74,20 +80,12 @@ export class Character extends NetworkBehavior {
 			}
 		}
 
-		this.applyUnit();
-		
-		this.collector.add(SpawnManager.onNetworkBehaviorDestroying.connect(behavior => {
-			if (behavior === this.lastUnit) this.lastUnit = undefined;
-		}));
-
-		this.unit.onValueChanged.connect(() => this.applyUnit());
+		this.unitBinder.start();
 	}
 
 	public willRemove(): void {
 		this.collector.teardown();
-		this.applyUnit(undefined);
-
-		this.lastUnit = undefined;
+		this.unitBinder.teardown();
 	}
 
 	protected getSourceScript(): ModuleScript {
@@ -154,33 +152,60 @@ export class Character extends NetworkBehavior {
 	//////////////////////////////
 	// CALLBACKS
 	//////////////////////////////
-	private update(deltaTime: number) {
-		const humanoid = this.getHumanoid();
+	private updateTargeting() {
 		const target = this.assignedTarget.getValue();
 		const targetRig = target && target.rig.getValue();
 		const targetPos = targetRig && targetRig.GetPivot().Position;
+		const distanceToTarget = targetPos && targetPos.sub(this.rig.getValue().GetPivot().Position).Magnitude;
 
-		if (target && (
-			targetPos.sub(this.pathfindingAgent.currentGoalPoint).Magnitude > Pathfinding.MIN_DISTANCE_FROM_GOAL_FOR_RECALCULATION ||
-			targetPos.sub(this.rig.getValue().GetPivot().Position).Magnitude > Pathfinding.MIN_DISTANCE_FROM_GOAL_FOR_PATHFINDING)) {
-			this.pathfindingAgent.findPath(targetPos);
-		}
-
-		if (this.pathfindingAgent.isPathfinding) {
-			const difference = this.pathfindingAgent.currentTargetPoint.sub(humanoid.RootPart!.Position);
-			const distance = difference.Magnitude;
-			const direction = difference.Unit;
-			const horizontalDelta = new Vector3(this.pathfindingAgent.currentTargetPoint.X - humanoid.RootPart!.Position.X, 0, this.pathfindingAgent.currentTargetPoint.Z - humanoid.RootPart!.Position.Z);
-
-			if (distance < Pathfinding.MINIMUM_DISTANCE_FOR_SEEK) {
-				humanoid.MoveTo(this.pathfindingAgent.currentTargetPoint);
-			} else {
-				humanoid.Move(direction);
+		if (target) {
+			if (distanceToTarget < MIN_PHYSICAL_ATTACK_DISTANCE) {
+				this.getHumanoid().Jump = true;
+				this.getHumanoid().RootPart!.AssemblyAngularVelocity = new Vector3(0, 100, 0);
 			}
 
-			if (horizontalDelta.Magnitude < Pathfinding.MINIMUM_TARGET_REACHED_DISTANCE) this.pathfindingAgent.reachedTarget.fire();
+			if (distanceToTarget > Pathfinding.MIN_DISTANCE_FROM_GOAL_FOR_PATHFINDING) {
+				if (!this.currentAttackTrip) {
+					this.currentAttackTrip = this.pathfindingAgent.createTrip(targetPos);
+					this.pathfindingAgent.setCurrentTrip(this.currentAttackTrip);
+				} else if (targetPos.sub(this.currentAttackTrip.goal).Magnitude > Pathfinding.MIN_DISTANCE_FROM_GOAL_FOR_RECALCULATION) {
+					this.currentAttackTrip.dispose();
+					this.currentAttackTrip = this.pathfindingAgent.createTrip(targetPos);
+					this.pathfindingAgent.setCurrentTrip(this.currentAttackTrip);
+				}
+			} else {
+				this.pathfindingAgent.setCurrentTrip(undefined);
+			}
+		} else if (this.currentOrderTrip) {
+			this.pathfindingAgent.setCurrentTrip(this.currentOrderTrip);
+		}
+	}
+	
+	private update(deltaTime: number) {
+		const humanoid = this.getHumanoid();
+
+		this.updateTargeting();
+
+		if (this.pathfindingAgent.isPathing) {
+			if (!this.pathfindingAgent.currentWaypoint) {
+				warn(`Agent is pathfinding, but no current waypoint is assigned.`);
+			} else {
+				const currentWaypointPosition = this.pathfindingAgent.currentWaypoint.Position;
+				const difference = currentWaypointPosition.sub(humanoid.RootPart!.Position);
+				const distance = difference.Magnitude;
+				const direction = difference.Unit;
+				const horizontalDelta = new Vector3(currentWaypointPosition.X - humanoid.RootPart!.Position.X, 0, currentWaypointPosition.Z - humanoid.RootPart!.Position.Z);
+
+				if (distance < Pathfinding.MINIMUM_DISTANCE_FOR_SEEK) {
+					humanoid.MoveTo(currentWaypointPosition);
+				} else {
+					humanoid.Move(direction);
+				}
+
+				if (horizontalDelta.Magnitude < Pathfinding.MINIMUM_TARGET_REACHED_DISTANCE) this.pathfindingAgent.reachedWaypoint.fire();
+			}
 		} else if (this.assignedTarget.getValue()) {
-			humanoid.MoveTo(targetPos);
+			humanoid.MoveTo(this.assignedTarget.getValue().rig.getValue().GetPivot().Position);
 		} else if (this.currentOrder instanceof GuardOrder && this.assignedGuardNode) {
 			humanoid.MoveTo(this.assignedGuardNode);
 		} else {
@@ -217,18 +242,9 @@ export class Character extends NetworkBehavior {
 		this.currentOrder = order;
 
 		if (order instanceof MoveOrder && this.isCommander()) {
-			this.pathfindingAgent.findPath(order.executionParameters.getValue().position);
+			this.currentOrderTrip = this.pathfindingAgent.createTrip(order.executionParameters.getValue().position);
 		} else if (order instanceof GuardOrder) {
 			this.findGuardNode();
-		}
-	}
-
-	private applyUnit(unit = this.unit.getValue()) {
-		if (unit !== this.lastUnit) {
-			this.lastUnit?.memberOnRemoving(this);
-			unit?.memberOnAdded(this);
-
-			this.lastUnit = unit;
 		}
 	}
 
@@ -257,15 +273,11 @@ export class Character extends NetworkBehavior {
 
 	public findGuardNode() {
 		const nodes = CollectionService.GetTagged("GuardNode") as BasePart[];
-		const pos = nodes[math.random(0, nodes.size() - 1)].Position;
+		const assignedNode = nodes[math.random(0, nodes.size() - 1)].Position;
 
-		this.assignedGuardNode = pos;
+		this.assignedGuardNode = assignedNode;
 
-		this.pathfindingAgent.findPath(pos).catch(e => {
-			warn(`Failed to pathfind to ${pos}, error: ${e}`);
-
-			this.findGuardNode();
-		});
+		this.currentOrderTrip = this.pathfindingAgent.createTrip(assignedNode);
 	}
 
 	//////////////////////////////

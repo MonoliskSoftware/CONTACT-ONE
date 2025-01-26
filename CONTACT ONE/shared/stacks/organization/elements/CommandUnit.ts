@@ -2,6 +2,7 @@
 import { RunService } from "@rbxts/services";
 import { BaseController } from "CONTACT ONE/shared/controllers/BaseController";
 import { PlayerManager } from "CONTACT ONE/shared/players/PlayerManager";
+import { NetworkBehaviorVariableBinder, NetworkVariableBinder } from "CONTACT ONE/shared/utilities/NetworkVariableBinder";
 import { Constructable, dict } from "CORP/shared/Libraries/Utilities";
 import { GameObject } from "CORP/shared/Scripts/Componentization/GameObject";
 import { ExtractNetworkVariables } from "CORP/shared/Scripts/Networking/NetworkBehavior";
@@ -16,66 +17,45 @@ import { BattleUnit } from "./BattleUnit";
 import { Faction } from "./Faction";
 import { Unit } from "./Unit";
 
+type CommandUnitParent = CommandUnit | Faction;
+
 /**
  * Command units are the highest level in the org hierarchy. The subordinates of a Command unit are always Battle units.
  */
-export class CommandUnit extends Unit<Faction | CommandUnit, CommandUnit | BattleUnit> {
+export class CommandUnit extends Unit<CommandUnitParent, CommandUnit | BattleUnit> {
 	public readonly controller = new NetworkVariable<BaseController>(this, undefined as unknown as BaseController);
 
-	private lastParent: CommandUnit | Faction | undefined;
-	private lastController: BaseController | undefined;
-
 	public readonly subordinates: (CommandUnit | BattleUnit)[] = [];
+	public readonly associatedOrders: BaseOrder<any, any>[] = [];
 	public readonly stack = GameStack.COMMAND_STACK;
 
+	private readonly parentBinder = new NetworkBehaviorVariableBinder<CommandUnitParent, CommandUnit>(this, this.parent, "subordinateOnAdded", "subordinateOnRemoved");
+	private readonly controllerBinder = new NetworkVariableBinder<BaseController, CommandUnit>(this, this.controller, "commandUnitOnCommandTaken", "commandUnitOnCommandRemoved");
+
+	public onOrderAdded(order: BaseOrder<any, any>) {
+		if (!this.associatedOrders.includes(order)) this.associatedOrders.push(order);
+	}
+
+	public onOrderRemoving(order: BaseOrder<any, any>) {
+		this.associatedOrders.remove(this.associatedOrders.indexOf(order));
+	}
+	
 	public onStart(): void {
 		super.onStart();
 		
-		this.applyAncestry();
-
-		this.parent.onValueChanged.connect(() => this.applyAncestry());
-		this.controller.onValueChanged.connect(() => this.applyController());
-
+		this.parentBinder.start();
+		this.controllerBinder.start();
 	}
 
 	public willRemove(): void {
 		super.willRemove();
-		
-		this.lastParent = undefined;
+
+		this.parentBinder.teardown();
+		this.controllerBinder.teardown();
 	}
 
 	protected getSourceScript(): ModuleScript {
 		return script as ModuleScript;
-	}
-
-	/**
-	 * Applies ancestry changes to NetworkVariables
-	 */
-	private applyAncestry() {
-		const currentParent = this.parent.getValue();
-
-		if (currentParent !== this.lastParent) {
-			this.lastParent?.subordinateOnRemoved(this);
-
-			currentParent?.subordinateOnAdded(this);
-
-			this.lastParent = currentParent;
-		}
-	}
-
-	/**
-	 * Applies controller changes to NetworkVariables
-	 */
-	private applyController() {
-		const currentController = this.controller.getValue();
-
-		if (currentController !== this.lastController) {
-			this.lastController?.commandUnitOnCommandRemoved(this);
-
-			currentController?.commandUnitOnCommandTaken(this);
-
-			this.lastController = currentController;
-		}
 	}
 
 	public subordinateOnAdded(subordinate: CommandUnit | BattleUnit) {

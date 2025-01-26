@@ -12,11 +12,11 @@ export class GuardOrder extends BaseOrder<CommandUnit, typeof GuardOrderParamete
 	public readonly executionParameters = new NetworkVariable(this, this.executionParameterSpecification);
 
 	public onStart(): void {
-
+		super.onStart();
 	}
 
 	public willRemove(): void {
-
+		super.willRemove();
 	}
 
 	protected getSourceScript(): ModuleScript {

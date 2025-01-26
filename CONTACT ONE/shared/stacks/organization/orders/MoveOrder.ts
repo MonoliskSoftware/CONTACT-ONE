@@ -12,11 +12,11 @@ export class MoveOrder extends BaseOrder<CommandUnit, typeof MoveOrderParameters
 	public readonly executionParameters = new NetworkVariable(this, this.executionParameterSpecification);
 
 	public onStart(): void {
-
+		super.onStart();
 	}
 
 	public willRemove(): void {
-
+		super.willRemove();
 	}
 
 	protected getSourceScript(): ModuleScript {
@@ -29,7 +29,7 @@ export class MoveOrder extends BaseOrder<CommandUnit, typeof MoveOrderParameters
 
 	public onExecutionBegan() {
 		// print(this.executionParameters.getValue());
-		
+
 		// this.getAssignedUnits().forEach(unit => unit.getMembersRecursive().forEach(member => member.getHumanoid().MoveTo(this.executionParameters.getValue().position)));
 	}
 

@@ -64,5 +64,5 @@ const MotorizedInfantryBrigade = {
 	members: [[RiflemanLoadout, 1]]
 } satisfies UnitTemplates.Template;
 
-export { MotorizedInfantrySquad as TestTemplate };
+export { MotorizedInfantryPlatoon as TestTemplate };
 

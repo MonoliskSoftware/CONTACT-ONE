@@ -65,7 +65,8 @@ export abstract class Unit<P extends BaseElement<any>, C extends BaseElement<any
 
 	public memberOnRemoving(member: Character) {
 		if (this.directMembers.includes(member)) {
-			// print(this.directMembers.indexOf(member));
+			if (member === this.commander.getValue())
+				this.commander.setValue(this.directMembers.find(otherMember => otherMember !== member) as Character);
 
 			this.directMembers.remove(this.directMembers.indexOf(member));
 

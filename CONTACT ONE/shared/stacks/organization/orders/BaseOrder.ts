@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { PlayerManager } from "CONTACT ONE/shared/players/PlayerManager";
+import { NetworkBehaviorVariableBinder } from "CONTACT ONE/shared/utilities/NetworkVariableBinder";
 import { dict, ServerSideOnly } from "CORP/shared/Libraries/Utilities";
 import { GameObject } from "CORP/shared/Scripts/Componentization/GameObject";
 import { NetworkBehavior } from "CORP/shared/Scripts/Networking/NetworkBehavior";
@@ -52,8 +53,18 @@ export abstract class BaseOrder<U extends Unit<any, any>, T extends dict> extend
 	 */
 	public readonly abstract executionParameters: NetworkVariable<T>;
 
+	private readonly originUnitBinder = new NetworkBehaviorVariableBinder(this as BaseOrder<any, any>, this.originUnit, "onOrderAdded", "onOrderRemoving");
+
 	constructor(gameObject: GameObject) {
 		super(gameObject);
+	}
+
+	public onStart(): void {
+		this.originUnitBinder.start();
+	}
+
+	public willRemove(): void {
+		this.originUnitBinder.teardown();
 	}
 
 	/**

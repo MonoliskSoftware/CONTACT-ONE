@@ -4,7 +4,7 @@ import React, { SetStateAction, useContext, useEffect, useState } from "@rbxts/r
 import { createPortal } from "@rbxts/react-roblox";
 import { Players, RunService, Workspace } from "@rbxts/services";
 import { GuiManagerContext } from "CONTACT ONE/shared/players/gui/GuiManagerContext";
-import { StyleButton } from "CONTACT ONE/shared/players/gui/style/StyleButton";
+import { ButtonDisabledProps, StyleButton } from "CONTACT ONE/shared/players/gui/style/StyleButton";
 import { StyleFrame } from "CONTACT ONE/shared/players/gui/style/StyleFrame";
 import { StyleTextLabel } from "CONTACT ONE/shared/players/gui/style/StyleLabel";
 import { Constructable, dict } from "CORP/shared/Libraries/Utilities";
@@ -18,11 +18,11 @@ import { StackComponentProps } from "../StackBehavior";
 
 const ALL_ORDERS = [MoveOrder, GuardOrder];
 
-const UnitSelectorUnit: React.FC<{
-	unit: Unit<any, any>,
+const SelectOption: React.FC<{
+	text: string,
 	selected: boolean,
 	toggleSelected: () => void
-}> = ({ unit, selected, toggleSelected }) => {
+}> = ({ text, selected, toggleSelected }) => {
 	return (
 		<StyleButton
 			Event={{
@@ -31,7 +31,7 @@ const UnitSelectorUnit: React.FC<{
 			AutomaticSize={Enum.AutomaticSize.XY}
 		>
 			<StyleTextLabel
-				Text={unit.name.getValue()}
+				Text={text}
 				FontFace={Font.fromName("Roboto", Enum.FontWeight.Bold)}
 				TextSize={24}
 				Position={UDim2.fromOffset(0, 0)}
@@ -55,7 +55,77 @@ const UnitSelectorUnit: React.FC<{
 	);
 };
 
-const UnitSelector: React.FC<{
+const UnitSelectorUnit: React.FC<{
+	unit: Unit<any, any>,
+	selected: boolean,
+	toggleSelected: () => void
+}> = ({ unit, selected, toggleSelected }) => {
+	return <SelectOption
+		text={unit.name.getValue()}
+		selected={selected}
+		toggleSelected={toggleSelected}
+	/>;
+};
+
+const CommandUnitSelector: React.FC<{
+	options: CommandUnit[],
+	selection: CommandUnit | undefined,
+	setSelection: (unit: CommandUnit | undefined) => void
+}> = ({ options, selection, setSelection }) => {
+	return (
+		<frame
+			AutomaticSize={Enum.AutomaticSize.XY}
+			BackgroundTransparency={1}
+		>
+			<uilistlayout
+				FillDirection={Enum.FillDirection.Vertical}
+				Padding={new UDim(0, 16)}
+				HorizontalFlex={Enum.UIFlexAlignment.Fill}
+				SortOrder={Enum.SortOrder.LayoutOrder}
+			/>
+			{options.map(option => <UnitSelectorUnit
+				unit={option}
+				selected={selection === option}
+				toggleSelected={() => {
+					if (selection !== option) setSelection(option);
+				}}
+			/>)}
+		</frame>
+	);
+};
+
+const OrderSelector: React.FC<{
+	orders: BaseOrder<any, any>[],
+	selectedOrders: BaseOrder<any, any>[],
+	setSelectedOrders: (orders: BaseOrder<any, any>[]) => void
+}> = ({ selectedOrders, orders, setSelectedOrders }) => {
+	return (
+		<frame
+			AutomaticSize={Enum.AutomaticSize.XY}
+			BackgroundTransparency={1}
+		>
+			<uilistlayout
+				FillDirection={Enum.FillDirection.Vertical}
+				Padding={new UDim(0, 16)}
+				HorizontalFlex={Enum.UIFlexAlignment.Fill}
+				SortOrder={Enum.SortOrder.LayoutOrder}
+			/>
+			{orders.map(option => <SelectOption
+				text={option.getConfig().name}
+				selected={selectedOrders.includes(option)}
+				toggleSelected={() => {
+					if (selectedOrders.includes(option)) {
+						setSelectedOrders(selectedOrders.filter(otherOption => otherOption !== option));
+					} else {
+						setSelectedOrders([...selectedOrders, option]);
+					}
+				}}
+			/>)}
+		</frame>
+	);
+};
+
+const SubordinateSelector: React.FC<{
 	rootUnit: Unit<any, Unit<any, any>>,
 	selection: Unit<any, any>[],
 	setSelection: (action: Unit<any, any>[]) => void;
@@ -63,8 +133,8 @@ const UnitSelector: React.FC<{
 	const [subordinates, setSubordinates] = useState([...rootUnit.subordinates, rootUnit]);
 
 	useEffect(() => {
-		const subAddedConn = rootUnit.subordinateAdded.connect(sub => setSubordinates([...subordinates, sub]));
-		const subRemovedConn = rootUnit.subordinateRemoving.connect(sub => setSubordinates(subordinates.filter(otherSub => otherSub !== sub)));
+		const subAddedConn = rootUnit.subordinateAdded.connect(() => setSubordinates([...rootUnit.subordinates, rootUnit]));
+		const subRemovedConn = rootUnit.subordinateRemoving.connect(() => setSubordinates([...rootUnit.subordinates, rootUnit]));
 
 		return () => {
 			subAddedConn.disconnect();
@@ -106,10 +176,11 @@ function castLookRay(camera: Camera) {
 
 const Vector3Editor: React.FC<{
 	enabled: boolean,
+	value: Vector3,
 	setValue: (value: Vector3) => void
-}> = ({ enabled, setValue }) => {
+}> = ({ enabled, value, setValue }) => {
 	const [isVisible, setIsVisible] = useState(false);
-	const [position, setPosition] = useState<[Vector3, UDim2]>([Vector3.zero, UDim2.fromScale(0, 0)]);
+	const [position, setPosition] = useState<[Vector3, UDim2]>([value, UDim2.fromScale(0, 0)]);
 
 	useEffect(() => {
 		if (!enabled) setValue(position[0]);
@@ -147,11 +218,10 @@ const Vector3Editor: React.FC<{
 };
 
 const OrderPropertyEditor: React.FC<{
-	sourceType: Vector3,
 	name: string
 	value: Vector3,
 	setValue: (value: Vector3) => void
-}> = ({ sourceType, name, value, setValue }) => {
+}> = ({ name, value, setValue }) => {
 	const [isEditing, setIsEditing] = useState(false);
 
 	return (
@@ -161,6 +231,7 @@ const OrderPropertyEditor: React.FC<{
 		>
 			<Vector3Editor
 				enabled={isEditing}
+				value={value}
 				setValue={setValue}
 			/>
 			<uilistlayout
@@ -204,12 +275,10 @@ const OrderPropertiesEditor: React.FC<{
 			/>
 			{
 				Object.entries(order.executionParameterSpecification as { [key: string]: Vector3 }).map(([key, value]) => {
-					return <OrderPropertyEditor name={key as string} value={(order.executionParameters as dict)[key as string]} sourceType={value} setValue={(newValue) => {
+					return <OrderPropertyEditor name={key as string} value={(order.executionParameters.getValue() as dict)[key as string]} setValue={(newValue) => {
 						const newParams = order.executionParameters.getValue() as dict;
 
 						newParams[key] = newValue;
-
-						print(newParams);
 
 						order.trySetParameters(newParams);
 					}} />;
@@ -226,48 +295,55 @@ const OrderPropertiesEditor: React.FC<{
 
 const OrderEditor: React.FC<{
 	rootUnit: Unit<any, Unit<any, any>>,
-	order: BaseOrder<any, any> | undefined,
-	setOrder: (state: SetStateAction<BaseOrder<any, any> | undefined>) => void
-}> = ({ rootUnit, order, setOrder }) => {
-	const [selection, setSelection] = useState<Unit<any, any>[]>(order ? order.getAssignedUnits() : []);
+	orders: BaseOrder<any, any>[],
+	setOrders: (state: SetStateAction<BaseOrder<any, any>[]>) => void
+}> = ({ rootUnit, orders, setOrders }) => {
+	const [selection, setSelection] = useState<Unit<any, any>[]>(orders.size() === 1 ? orders[0].getAssignedUnits() : []);
 
 	useEffect(() => {
-		order?.assignedUnitIds.onValueChanged.connect(() => setSelection(order ? order.getAssignedUnits() : []));
+		if (orders.size() === 1) {
+			const conn = orders[0].assignedUnitIds.onValueChanged.connect(() => setSelection(orders.size() === 1 ? orders[0].getAssignedUnits() : []));
 
-		setSelection(order ? order.getAssignedUnits() : []);
-	}, [order]);
+			setSelection(orders[0].getAssignedUnits());
+
+			return () => conn.disconnect();
+		}
+	}, [orders]);
 
 	return <frame
 		AutomaticSize={Enum.AutomaticSize.XY}
 		BackgroundTransparency={1}
+		Size={UDim2.fromOffset(384, 0)}
 	>
 		{
-			order ? <>
+			rootUnit && orders.size() === 1 ? <>
 				<OrderPropertiesEditor
-					order={order}
+					order={orders[0]}
 				/>
-				<UnitSelector
+				<SubordinateSelector
 					rootUnit={rootUnit}
 					selection={selection}
 					setSelection={(newSelection: Unit<any, any>[]) => {
-						order.trySetAssignedUnits(newSelection.map(unit => unit.getId()));
+						orders[0].trySetAssignedUnits(newSelection.map(unit => unit.getId()));
 					}}
 				/>
-				<StyleButton
-					Event={{
-						Activated: () => order.tryExecute()
-					}}
-				>
-					<StyleTextLabel
-						Text={"EXECUTE"}
-						Position={UDim2.fromScale(0.5, 0)}
-						AnchorPoint={new Vector2(0.5, 0)}
-						TextSize={42}
-						TextWrapped={false}
-						FontFace={Font.fromName("Roboto", Enum.FontWeight.Bold)}
-					/>
-				</StyleButton>
 			</> : <></>
+		}
+		{
+			rootUnit && orders.size() > 0 ? <StyleButton
+				Event={{
+					Activated: () => orders.forEach(order => order.tryExecute())
+				}}
+			>
+				<StyleTextLabel
+					Text={"EXECUTE"}
+					Position={UDim2.fromScale(0.5, 0)}
+					AnchorPoint={new Vector2(0.5, 0)}
+					TextSize={42}
+					TextWrapped={false}
+					FontFace={Font.fromName("Roboto", Enum.FontWeight.Bold)}
+				/>
+			</StyleButton> : <></>
 		}
 		<uilistlayout
 			FillDirection={Enum.FillDirection.Vertical}
@@ -279,12 +355,18 @@ const OrderEditor: React.FC<{
 };
 
 const OrderCreator: React.FC<{
-	rootUnit: CommandUnit,
-	setOrder: (state: SetStateAction<BaseOrder<any, any> | undefined>) => void
-}> = ({ rootUnit, setOrder }) => {
+	rootUnits: CommandUnit[],
+	commandUnit: CommandUnit | undefined,
+	setCommandUnit: (unit: CommandUnit | undefined) => void,
+	orders: BaseOrder<any, any>[],
+	setOrders: (state: SetStateAction<BaseOrder<any, any>[]>) => void
+}> = ({ orders, commandUnit, setCommandUnit, rootUnits, setOrders }) => {
 	const [availableOrders, setAvailableOrders] = useState<Constructable<BaseOrder<any, any>>[]>(ALL_ORDERS);
 
-	return (
+	return <frame
+		AutomaticSize={Enum.AutomaticSize.XY}
+		BackgroundTransparency={1}
+	>
 		<StyleFrame
 			Size={UDim2.fromOffset(512, 0)}
 			AutomaticSize={Enum.AutomaticSize.Y}
@@ -298,12 +380,14 @@ const OrderCreator: React.FC<{
 				return <StyleButton
 					Event={{
 						Activated: () => {
-							print(rootUnit);
-							const order = rootUnit.createOrder(availableOrder, false);
+							if (commandUnit) {
+								const order = commandUnit.createOrder(availableOrder, false);
 
-							setOrder(order);
+								setOrders([order]);
+							}
 						}
 					}}
+					{...(commandUnit === undefined ? ButtonDisabledProps : {})}
 				>
 					<StyleTextLabel
 						Text={(availableOrder as unknown as BaseOrder<any, any>).getConfig().name.upper()}
@@ -318,7 +402,23 @@ const OrderCreator: React.FC<{
 				Padding={new UDim(0, 8)}
 			/>
 		</StyleFrame>
-	);
+		<CommandUnitSelector
+			options={rootUnits}
+			selection={commandUnit}
+			setSelection={setCommandUnit}
+		/>
+		{commandUnit ? <OrderSelector
+			orders={commandUnit.associatedOrders}
+			setSelectedOrders={setOrders}
+			selectedOrders={orders}
+		/> : <></>}
+		<uilistlayout
+			FillDirection={Enum.FillDirection.Vertical}
+			Padding={new UDim(0, 16)}
+			HorizontalFlex={Enum.UIFlexAlignment.Fill}
+			SortOrder={Enum.SortOrder.LayoutOrder}
+		/>
+	</frame >;
 };
 
 export const CommandStackComponent: React.FC<StackComponentProps<CommandStackBehavior>> = (props: StackComponentProps<CommandStackBehavior>) => {
@@ -326,27 +426,34 @@ export const CommandStackComponent: React.FC<StackComponentProps<CommandStackBeh
 
 	assert(guiManagerContext);
 
-	const [controlledUnit, setControlledUnit] = useState<CommandUnit | undefined>(guiManagerContext.playerBehavior.commandedUnits[0]);
-	const [currentOrder, setCurrentOrder] = useState<BaseOrder<any, any> | undefined>(undefined);
+	const [controlledUnits, setControlledUnits] = useState<CommandUnit[]>(guiManagerContext.playerBehavior.commandedUnits);
+	const [selectedOrders, setSelectedOrders] = useState<BaseOrder<any, any>[]>([]);
+	const [commandUnit, setCommandUnit] = useState<CommandUnit | undefined>();
 
 	useEffect(() => {
-		const conn = guiManagerContext.playerBehavior.commandedUnitsChanged.connect(() => setControlledUnit(guiManagerContext.playerBehavior.commandedUnits[0]));
+		const conn = guiManagerContext.playerBehavior.commandedUnitsChanged.connect(() => setControlledUnits(guiManagerContext.playerBehavior.commandedUnits));
 
 		return () => conn.disconnect();
 	});
 
 	useEffect(() => {
-		const conn = currentOrder?.removing.connect(() => setCurrentOrder(undefined));
+		const conns = selectedOrders.map(order => order.removing.connect(() => setSelectedOrders(orders => orders.filter(otherOrder => otherOrder !== order))));
+
+		return () => conns.forEach(conn => conn.disconnect());
+	}, [selectedOrders]);
+
+	useEffect(() => {
+		const conn = commandUnit?.removing.connect(() => setCommandUnit(undefined));
 
 		return () => conn?.disconnect();
-	}, [currentOrder]);
+	}, [commandUnit]);
 
 	return (
 		<screengui>
 			<OrderEditor
-				rootUnit={controlledUnit as Unit<any, Unit<any, any>>}
-				order={currentOrder}
-				setOrder={setCurrentOrder}
+				rootUnit={commandUnit as Unit<any, Unit<any, any>>}
+				orders={selectedOrders}
+				setOrders={setSelectedOrders}
 			/>
 			<frame
 				BackgroundTransparency={1}
@@ -356,8 +463,11 @@ export const CommandStackComponent: React.FC<StackComponentProps<CommandStackBeh
 				/>
 			</frame>
 			<OrderCreator
-				rootUnit={controlledUnit as CommandUnit}
-				setOrder={setCurrentOrder}
+				rootUnits={controlledUnits as CommandUnit[]}
+				commandUnit={commandUnit}
+				setCommandUnit={setCommandUnit}
+				orders={selectedOrders}
+				setOrders={setSelectedOrders}
 			/>
 			<uipadding
 				PaddingLeft={new UDim(0, 16)}
