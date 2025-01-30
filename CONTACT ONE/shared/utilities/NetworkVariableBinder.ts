@@ -52,7 +52,6 @@ export class NetworkVariableBinder<T extends Networking.NetworkableTypes, C exte
 
 	private apply(value: T | undefined) {
 		if (value !== this.lastValue) {
-			if (this.lastValue !== undefined && !this.lastValue[this.deactivation]) warn(this.lastValue, this.id);
 			if (this.lastValue !== undefined) (this.lastValue[this.deactivation] as (this: T, behavior: C) => void)(this.behavior);
 			if (value !== undefined) (value[this.activation] as (this: T, behavior: C) => void)(this.behavior);
 
@@ -68,8 +67,6 @@ export class NetworkBehaviorVariableBinder<T extends NetworkBehavior, C extends 
 		super(behavior, variable, activation, deactivation);
 
 		this.behaviorDestroyingConnection = SpawnManager.onNetworkBehaviorDestroying.connect(behavior => {
-			warn(this.id, behavior.getId(), this.lastValue?.getId());
-			
 			if (behavior === this.lastValue) this.lastValue = undefined;
 		});
 	}

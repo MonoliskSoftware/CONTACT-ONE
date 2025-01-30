@@ -9,6 +9,7 @@ import { NetworkVariable } from "../Scripts/Networking/NetworkVariable";
 import { SpawnManager } from "../Scripts/Networking/SpawnManager";
 import { BattleUnit } from "../stacks/organization/elements/BattleUnit";
 import { CommandUnit } from "../stacks/organization/elements/CommandUnit";
+import { Faction } from "../stacks/organization/elements/Faction";
 import { Unit } from "../stacks/organization/elements/Unit";
 import { BaseOrder } from "../stacks/organization/orders/BaseOrder";
 import { GuardOrder } from "../stacks/organization/orders/GuardOrder";
@@ -29,6 +30,8 @@ export interface Rig extends Model {
 }
 
 const MIN_PHYSICAL_ATTACK_DISTANCE = 5;
+const UPDATE_INTERVAL_ENABLED = true;
+const UPDATE_INTERVAL = 1;
 
 export class Character extends NetworkBehavior {
 	/**
@@ -50,6 +53,8 @@ export class Character extends NetworkBehavior {
 
 	private readonly collector = new Collector();
 
+	private lastUpdate = 0;
+
 	private currentOrder: BaseOrder<any, any> | undefined;
 	private pathfindingAgent = undefined as unknown as Pathfinding.Agent;
 
@@ -62,6 +67,8 @@ export class Character extends NetworkBehavior {
 	// Medium: order trips
 	private currentOrderTrip: Pathfinding.Trip | undefined;
 
+	private pathfindingPromises: Promise<Pathfinding.Trip>[] = [];
+
 	public onStart(): void {
 		if (RunService.IsServer()) {
 			this.initializeRig();
@@ -71,19 +78,14 @@ export class Character extends NetworkBehavior {
 			this.rig.getValue().PivotTo(SpawnLocation.getSpawnLocationOfFaction((this.unit.getValue() as CommandUnit | BattleUnit).getFaction()?.name.getValue() ?? "")?.getGameObject().getInstance().GetPivot() ?? CFrame.identity);
 
 			this.collector.add(RunService.Heartbeat.Connect(deltaTime => this.update(deltaTime)));
-
-			{
-				const e = new Instance("RemoteEvent");
-
-				e.Parent = this.rig.getValue();
-				e.OnServerEvent.Connect(() => this.getHumanoid().Health = 0);
-			}
 		}
 
 		this.unitBinder.start();
 	}
 
 	public willRemove(): void {
+		this.pathfindingPromises.forEach(prom => prom.cancel());
+
 		this.collector.teardown();
 		this.unitBinder.teardown();
 	}
@@ -125,6 +127,7 @@ export class Character extends NetworkBehavior {
 		const rig = this.getGameObject().addInstancePrefabFromPath<Rig>(PathToRig);
 
 		rig.ModelStreamingMode = Enum.ModelStreamingMode.Atomic;
+		rig.Name = `${this.getFaction()?.name.getValue()}${this.getId()}`;
 
 		rig.GetDescendants().forEach(child => {
 			if (child.IsA("BasePart")) child.CollisionGroup = CharacterPhysics.PHYSICS_GROUP_CHARACTER;
@@ -152,6 +155,21 @@ export class Character extends NetworkBehavior {
 	//////////////////////////////
 	// CALLBACKS
 	//////////////////////////////
+	public onAssignedAsCommander() {
+		this.onIsCommanderChanged.fire(true);
+	}
+
+	public onRemovedAsCommander() {
+		this.onIsCommanderChanged.fire(false);
+	}
+
+	private createNewAttackTrip(targetPos: Vector3) {
+		this.pathfindingPromises.push(new Promise(() => {
+			this.currentAttackTrip = this.pathfindingAgent.createTrip(targetPos);
+			this.pathfindingAgent.setCurrentTrip(this.currentAttackTrip);
+		}));
+	}
+
 	private updateTargeting() {
 		const target = this.assignedTarget.getValue();
 		const targetRig = target && target.rig.getValue();
@@ -166,12 +184,10 @@ export class Character extends NetworkBehavior {
 
 			if (distanceToTarget > Pathfinding.MIN_DISTANCE_FROM_GOAL_FOR_PATHFINDING) {
 				if (!this.currentAttackTrip) {
-					this.currentAttackTrip = this.pathfindingAgent.createTrip(targetPos);
-					this.pathfindingAgent.setCurrentTrip(this.currentAttackTrip);
+					this.createNewAttackTrip(targetPos);
 				} else if (targetPos.sub(this.currentAttackTrip.goal).Magnitude > Pathfinding.MIN_DISTANCE_FROM_GOAL_FOR_RECALCULATION) {
 					this.currentAttackTrip.dispose();
-					this.currentAttackTrip = this.pathfindingAgent.createTrip(targetPos);
-					this.pathfindingAgent.setCurrentTrip(this.currentAttackTrip);
+					this.createNewAttackTrip(targetPos);
 				}
 			} else {
 				this.pathfindingAgent.setCurrentTrip(undefined);
@@ -180,60 +196,62 @@ export class Character extends NetworkBehavior {
 			this.pathfindingAgent.setCurrentTrip(this.currentOrderTrip);
 		}
 	}
-	
+
 	private update(deltaTime: number) {
-		const humanoid = this.getHumanoid();
+		if (!UPDATE_INTERVAL_ENABLED || tick() - this.lastUpdate > UPDATE_INTERVAL) {
+			this.lastUpdate = tick();
+			const humanoid = this.getHumanoid();
 
-		this.updateTargeting();
+			this.updateTargeting();
 
-		if (this.pathfindingAgent.isPathing) {
-			if (!this.pathfindingAgent.currentWaypoint) {
-				warn(`Agent is pathfinding, but no current waypoint is assigned.`);
-			} else {
-				const currentWaypointPosition = this.pathfindingAgent.currentWaypoint.Position;
-				const difference = currentWaypointPosition.sub(humanoid.RootPart!.Position);
-				const distance = difference.Magnitude;
-				const direction = difference.Unit;
-				const horizontalDelta = new Vector3(currentWaypointPosition.X - humanoid.RootPart!.Position.X, 0, currentWaypointPosition.Z - humanoid.RootPart!.Position.Z);
-
-				if (distance < Pathfinding.MINIMUM_DISTANCE_FOR_SEEK) {
-					humanoid.MoveTo(currentWaypointPosition);
+			if (this.pathfindingAgent.isPathing) {
+				if (!this.pathfindingAgent.currentWaypoint) {
+					warn(`Agent is pathfinding, but no current waypoint is assigned.`);
 				} else {
-					humanoid.Move(direction);
+					const currentWaypointPosition = this.pathfindingAgent.currentWaypoint.Position;
+					const difference = currentWaypointPosition.sub(humanoid.RootPart!.Position);
+					const distance = difference.Magnitude;
+					const direction = difference.Unit;
+					const horizontalDelta = new Vector3(currentWaypointPosition.X - humanoid.RootPart!.Position.X, 0, currentWaypointPosition.Z - humanoid.RootPart!.Position.Z);
+
+					if (distance < Pathfinding.MINIMUM_DISTANCE_FOR_SEEK) {
+						humanoid.MoveTo(currentWaypointPosition);
+					} else {
+						humanoid.Move(direction);
+					}
+
+					if (horizontalDelta.Magnitude < Pathfinding.MINIMUM_TARGET_REACHED_DISTANCE) this.pathfindingAgent.reachedWaypoint.fire();
 				}
-
-				if (horizontalDelta.Magnitude < Pathfinding.MINIMUM_TARGET_REACHED_DISTANCE) this.pathfindingAgent.reachedWaypoint.fire();
+			} else if (this.assignedTarget.getValue()) {
+				humanoid.MoveTo(this.assignedTarget.getValue().rig.getValue().GetPivot().Position);
+			} else if (this.currentOrder instanceof GuardOrder && this.assignedGuardNode) {
+				humanoid.MoveTo(this.assignedGuardNode);
+			} else {
+				humanoid.Move(Vector3.zero);
 			}
-		} else if (this.assignedTarget.getValue()) {
-			humanoid.MoveTo(this.assignedTarget.getValue().rig.getValue().GetPivot().Position);
-		} else if (this.currentOrder instanceof GuardOrder && this.assignedGuardNode) {
-			humanoid.MoveTo(this.assignedGuardNode);
-		} else {
-			humanoid.Move(Vector3.zero);
-		}
 
-		if (this.shouldScanForTargets()) this.scanForTargets();
-		if (this.shouldTryGetNewTarget() && this.unit.getValue().knownTargets.getValue().size() > 0) {
-			const target = this.unit.getValue().requestTarget();
+			if (this.shouldScanForTargets()) this.scanForTargets();
+			if (this.shouldTryGetNewTarget() && this.unit.getValue().knownTargets.getValue().size() > 0) {
+				const target = this.unit.getValue().requestTarget();
 
-			if (target) this.assignedTarget.setValue(target);
-		}
+				if (target) this.assignedTarget.setValue(target);
+			}
 
-		if (!this.isCommander() && this.shouldMaintainFormation()) {
-			const unit = this.unit.getValue();
-			const index = unit.directMembers.indexOf(this);
+			if (!this.isCommander() && this.shouldMaintainFormation()) {
+				const unit = this.unit.getValue();
+				const index = unit.directMembers.indexOf(this);
 
-			const commanderOrigin = unit.commander.getValue().rig.getValue().GetPivot();
+				const commanderOrigin = unit.commander.getValue().rig.getValue().GetPivot();
 
-			const final = Formations.FormationComputers[unit.formation.getValue()](index);
+				const final = Formations.FormationComputers[unit.formation.getValue()](index);
 
-			humanoid.MoveTo(commanderOrigin.mul(new CFrame(final.X * 8, 0, final.Y * 8)).Position);
+				humanoid.MoveTo(commanderOrigin.mul(new CFrame(final.X * 8, 0, final.Y * 8)).Position);
+			}
 		}
 	}
 
 	private onDied() {
 		this.died.fire();
-		this.unit.setValue(undefined as unknown as Unit<any, any>);
 
 		if (!Utilities.wasDestroyed(this)) this.getGameObject().destroy();
 	}
@@ -298,6 +316,10 @@ export class Character extends NetworkBehavior {
 
 	public hasRig(): boolean {
 		return this.rig.getValue() !== undefined;
+	}
+
+	public getFaction(): Faction | undefined {
+		return (this.unit.getValue() as BattleUnit | CommandUnit).getFaction();
 	}
 
 	//////////////////////////////

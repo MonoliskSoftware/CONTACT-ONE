@@ -1,3 +1,4 @@
+import { RunService } from "@rbxts/services";
 import { GameStack } from "../../StackManager";
 import { CommandUnit } from "./CommandUnit";
 import { Faction } from "./Faction";
@@ -7,17 +8,11 @@ import { Unit } from "./Unit";
  * Battle units compose the elements of Command units and other Battle units. The subordinates of 
  */
 export class BattleUnit extends Unit<BattleUnit | CommandUnit, BattleUnit> {
-	private lastParent: CommandUnit | BattleUnit | undefined;
-
 	public readonly stack = GameStack.BATTLE_STACK;
 	public readonly subordinates: BattleUnit[] = [];
 
 	public onStart(): void {
 		super.onStart();
-		
-		this.applyAncestry();
-
-		this.parent.onValueChanged.connect(parent => this.applyAncestry());
 	}
 
 	public willRemove(): void {
@@ -28,24 +23,14 @@ export class BattleUnit extends Unit<BattleUnit | CommandUnit, BattleUnit> {
 		return script as ModuleScript;
 	}
 
-	private applyAncestry() {
-		const newParent = this.parent.getValue();
-
-		if (newParent !== this.lastParent) {
-			this.lastParent?.subordinateOnRemoved(this);
-
-			newParent?.subordinateOnAdded(this);
-
-			this.lastParent = this.parent.getValue();
-		}
-	}
-
 	public subordinateOnAdded(subordinate: BattleUnit) {
 		if (!this.subordinates.includes(subordinate)) this.subordinates.push(subordinate);
 	}
 
 	public subordinateOnRemoved(subordinate: BattleUnit) {
 		this.subordinates.remove(this.subordinates.indexOf(subordinate));
+
+		if (RunService.IsServer()) super.checkIfShouldDestroy();
 	}
 
 	public getCommandUnit(): CommandUnit | undefined {

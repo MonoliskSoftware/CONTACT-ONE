@@ -2,6 +2,9 @@
 import { RunService } from "@rbxts/services";
 import { Character } from "CONTACT ONE/shared/characters/Character";
 import { Formations } from "CONTACT ONE/shared/characters/Formations";
+import { NetworkBehaviorVariableBinder } from "CONTACT ONE/shared/utilities/NetworkVariableBinder";
+import { Connection } from "CORP/shared/Libraries/Signal";
+import { ServerSideOnly } from "CORP/shared/Libraries/Utilities";
 import { NetworkList } from "CORP/shared/Scripts/Networking/NetworkList";
 import { NetworkVariable } from "CORP/shared/Scripts/Networking/NetworkVariable";
 import { GameStack } from "../../StackManager";
@@ -18,7 +21,7 @@ export abstract class Unit<P extends BaseElement<any>, C extends BaseElement<any
 	 */
 	public readonly commander = new NetworkVariable(this, undefined as unknown as Character);
 
-	private lastCommander: Character | undefined;
+	private readonly commanderBinder = new NetworkBehaviorVariableBinder(this as Unit<P, C>, this.commander, "onAssignedAsCommander", "onRemovedAsCommander");
 
 	public readonly formation = new NetworkVariable(this, Formations.FormationType.FILE);
 
@@ -42,12 +45,16 @@ export abstract class Unit<P extends BaseElement<any>, C extends BaseElement<any
 	 */
 	public readonly parent = new NetworkVariable<P>(this, undefined as unknown as P);
 
+	private readonly parentBinder = new NetworkBehaviorVariableBinder(this as Unit<P, C>, this.parent as unknown as NetworkVariable<BaseElement<any>>, "subordinateOnAdded", "subordinateOnRemoved");
+
 	/**
 	 * Specifies what stack this Unit class belongs to.
 	 */
 	public abstract readonly stack: GameStack;
 
 	public readonly knownTargets = new NetworkList<Character>(this, []);
+
+	private targetDiedConnections: Connection<[]>[] = [];
 
 	/**
 	 * Returns a recursively fetched array of all units descending from this one.
@@ -65,21 +72,32 @@ export abstract class Unit<P extends BaseElement<any>, C extends BaseElement<any
 
 	public memberOnRemoving(member: Character) {
 		if (this.directMembers.includes(member)) {
-			if (member === this.commander.getValue())
+			if (member === this.commander.getValue() || !this.commander.getValue()) {
+				print(`Changing commander for ${this.getId()}`);
+				
 				this.commander.setValue(this.directMembers.find(otherMember => otherMember !== member) as Character);
+			}
 
 			this.directMembers.remove(this.directMembers.indexOf(member));
 
-			this.checkIfShouldDestroy();
+			if (RunService.IsServer()) this.checkIfShouldDestroy();
 		}
 	}
 
 	public willRemove(): void {
+		this.commanderBinder.teardown();
+		this.parentBinder.teardown();
+
+		this.targetDiedConnections.forEach(connection => connection.disconnect());
+		this.targetDiedConnections.clear();
+
 		if (RunService.IsServer()) this.parent.setValue(undefined as unknown as P);
 	}
 
-	private checkIfShouldDestroy(): void {
-		if (this.directMembers.size() === 0 && this.subordinates.size() === 0) {
+	@ServerSideOnly
+	protected checkIfShouldDestroy(ignoreSubordinate?: Unit<any, any>): void {
+		warn(`${this.name.getValue()} now has ${this.directMembers.size()} members and ${this.subordinates.size()} subordinates!`);
+		if (this.directMembers.size() === 0 && (this.subordinates.size() === 0 || (this.subordinates.size() === 1 && this.subordinates.includes(ignoreSubordinate as unknown as C)))) {
 			let unit = this.parent;
 
 			while (unit instanceof Unit) {
@@ -87,28 +105,18 @@ export abstract class Unit<P extends BaseElement<any>, C extends BaseElement<any
 
 				unit = unit.parent;
 
-				tempUnit.checkIfShouldDestroy();
+				tempUnit.checkIfShouldDestroy(this);
 			}
+
+			print(`${this.name.getValue()}`);
 
 			this.getGameObject().destroy();
 		}
 	}
 
 	public onStart(): void {
-		this.onCommanderChanged();
-
-		this.commander.onValueChanged.connect(() => this.onCommanderChanged());
-	}
-
-	private onCommanderChanged() {
-		const commander = this.commander.getValue();
-
-		if (commander !== this.lastCommander) {
-			this.lastCommander?.onIsCommanderChanged.fire(false);
-			commander.onIsCommanderChanged.fire(true);
-
-			this.lastCommander = commander;
-		}
+		this.commanderBinder.start();
+		this.parentBinder.start();
 	}
 
 	public getMembersRecursive(): Character[] {
@@ -119,7 +127,7 @@ export abstract class Unit<P extends BaseElement<any>, C extends BaseElement<any
 		if (!this.knownTargets.includes(target)) {
 			this.knownTargets.push(target);
 
-			target.died.connect(() => this.knownTargets.setValue(this.knownTargets.getValue().filter(value => value !== target)));
+			this.targetDiedConnections.push(target.died.connect(() => this.knownTargets.setValue(this.knownTargets.getValue().filter(value => value !== target))));
 		}
 	}
 

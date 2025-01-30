@@ -451,7 +451,7 @@ export const CommandStackComponent: React.FC<StackComponentProps<CommandStackBeh
 	return (
 		<screengui>
 			<OrderEditor
-				rootUnit={commandUnit as Unit<any, Unit<any, any>>}
+				rootUnit={commandUnit as Unit<any, any>}
 				orders={selectedOrders}
 				setOrders={setSelectedOrders}
 			/>

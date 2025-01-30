@@ -2,7 +2,7 @@
 import { RunService } from "@rbxts/services";
 import { BaseController } from "CONTACT ONE/shared/controllers/BaseController";
 import { PlayerManager } from "CONTACT ONE/shared/players/PlayerManager";
-import { NetworkBehaviorVariableBinder, NetworkVariableBinder } from "CONTACT ONE/shared/utilities/NetworkVariableBinder";
+import { NetworkVariableBinder } from "CONTACT ONE/shared/utilities/NetworkVariableBinder";
 import { Constructable, dict } from "CORP/shared/Libraries/Utilities";
 import { GameObject } from "CORP/shared/Scripts/Componentization/GameObject";
 import { ExtractNetworkVariables } from "CORP/shared/Scripts/Networking/NetworkBehavior";
@@ -29,7 +29,6 @@ export class CommandUnit extends Unit<CommandUnitParent, CommandUnit | BattleUni
 	public readonly associatedOrders: BaseOrder<any, any>[] = [];
 	public readonly stack = GameStack.COMMAND_STACK;
 
-	private readonly parentBinder = new NetworkBehaviorVariableBinder<CommandUnitParent, CommandUnit>(this, this.parent, "subordinateOnAdded", "subordinateOnRemoved");
 	private readonly controllerBinder = new NetworkVariableBinder<BaseController, CommandUnit>(this, this.controller, "commandUnitOnCommandTaken", "commandUnitOnCommandRemoved");
 
 	public onOrderAdded(order: BaseOrder<any, any>) {
@@ -43,14 +42,12 @@ export class CommandUnit extends Unit<CommandUnitParent, CommandUnit | BattleUni
 	public onStart(): void {
 		super.onStart();
 		
-		this.parentBinder.start();
 		this.controllerBinder.start();
 	}
 
 	public willRemove(): void {
 		super.willRemove();
 
-		this.parentBinder.teardown();
 		this.controllerBinder.teardown();
 	}
 
@@ -68,6 +65,8 @@ export class CommandUnit extends Unit<CommandUnitParent, CommandUnit | BattleUni
 		this.subordinateRemoving.fire(subordinate);
 
 		this.subordinates.remove(this.subordinates.indexOf(subordinate));
+
+		if (RunService.IsServer()) super.checkIfShouldDestroy();
 	}
 
 	public getFaction(): Faction | undefined {
