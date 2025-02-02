@@ -15,6 +15,6 @@ export namespace CharacterPhysics {
 		PhysicsService.RegisterCollisionGroup(PHYSICS_GROUP_CHARACTER_COLLIDER);
 		PhysicsService.CollisionGroupSetCollidable(PHYSICS_GROUP_CHARACTER_COLLIDER, PHYSICS_GROUP_CHARACTER_COLLIDER, false);
 		PhysicsService.CollisionGroupSetCollidable(PHYSICS_GROUP_CHARACTER_COLLIDER, PHYSICS_GROUP_CHARACTER, false);
-		PhysicsService.CollisionGroupSetCollidable(PHYSICS_GROUP_CHARACTER_COLLIDER, PHYSICS_GROUP_DEFAULT, false);
+		PhysicsService.CollisionGroupSetCollidable(PHYSICS_GROUP_CHARACTER_COLLIDER, PHYSICS_GROUP_DEFAULT, true);
 	}
 }

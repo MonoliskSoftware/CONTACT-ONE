@@ -21,7 +21,7 @@ const MotorizedInfantrySquad = {
 	subordinates: [],
 	classProfile: UnitProfiles.USProfiles.MotorizedInfantry,
 	sizeProfile: UnitProfiles.USProfiles.Squad,
-	members: [[RiflemanLoadout, 1]]
+	members: [[RiflemanLoadout, 7]]
 } satisfies UnitTemplates.Template;
 
 const MotorizedInfantryPlatoon = {

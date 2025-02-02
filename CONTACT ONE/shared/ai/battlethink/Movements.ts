@@ -26,7 +26,7 @@ function createDebugPart(position: Vector3, connectedPart: Attachment, color = n
 	beam.Attachment1 = attach;
 	beam.Color = new ColorSequence(color);
 
-	return part;
+	return [part, beam] as [Part, Beam];
 }
 
 export abstract class Movement {
@@ -38,32 +38,42 @@ export abstract class Movement {
 	protected readonly controller: AIBattleController;
 	protected readonly humanoid: Humanoid;
 
-	protected goalPart: Part;
-	protected waypointPart: Part;
-	protected originPart: Part;
+	public readonly name: string;
 
-	constructor(controller: AIBattleController) {
+	constructor(controller: AIBattleController, name: string) {
 		this.controller = controller;
 		this.humanoid = this.controller.character.getValue().getHumanoid();
-
-		this.goalPart = createDebugPart(Vector3.zero, (this.humanoid.RootPart as unknown as { RootAttachment: Attachment }).RootAttachment, new Color3(1, 0, 0));
-		this.waypointPart = createDebugPart(Vector3.zero, (this.humanoid.RootPart as unknown as { RootAttachment: Attachment }).RootAttachment, new Color3(0, 1, 0));
-		this.originPart = createDebugPart(Vector3.zero, (this.humanoid.RootPart as unknown as { RootAttachment: Attachment }).RootAttachment, new Color3(0, 0, 1));
+		this.name = name;
 	}
 
 	abstract update(deltaTime: number): void;
 	abstract onActivatedChanged(activated: boolean): void;
+	abstract willDispose(): void;
+
+	public dispose() {
+		this.willDispose();
+
+		this.controller.removeMovement(this);
+	}
 }
 
 export class TripMovement extends Movement {
-	public readonly trip: Pathfinding.Trip;
+	public readonly trip: Pathfinding.AgentPath;
 	private readonly agent: Pathfinding.Agent;
 
-	constructor(controller: AIBattleController, trip: Pathfinding.Trip) {
-		super(controller);
+	protected goalPart: [Part, Beam];
+	protected waypointPart: [Part, Beam];
+	protected originPart: [Part, Beam];
+
+	constructor(controller: AIBattleController, name: string, trip: Pathfinding.AgentPath) {
+		super(controller, name);
 
 		this.trip = trip;
 		this.agent = trip.agent;
+
+		this.goalPart = createDebugPart(Vector3.zero, (this.humanoid.RootPart as unknown as { RootAttachment: Attachment }).RootAttachment, new Color3(1, 0, 0));
+		this.waypointPart = createDebugPart(Vector3.zero, (this.humanoid.RootPart as unknown as { RootAttachment: Attachment }).RootAttachment, new Color3(0, 1, 0));
+		this.originPart = createDebugPart(Vector3.zero, (this.humanoid.RootPart as unknown as { RootAttachment: Attachment }).RootAttachment, new Color3(0, 0, 1));
 	}
 
 	update(deltaTime: number): void {
@@ -72,45 +82,111 @@ export class TripMovement extends Movement {
 		if (!this.trip.finished) {
 			if (!this.agent.currentWaypoint) {
 				warn(`Agent is pathfinding, but no current waypoint is assigned.`);
+
+				this.enabled = false;
 			} else {
-				const currentWaypointPosition = this.agent.currentWaypoint.Position;
-				const difference = currentWaypointPosition.sub(this.humanoid.RootPart!.Position);
-				const distance = difference.Magnitude;
-				const direction = difference.Unit;
-				const horizontalDelta = new Vector3(currentWaypointPosition.X - this.humanoid.RootPart!.Position.X, 0, currentWaypointPosition.Z - this.humanoid.RootPart!.Position.Z);
+				{
+					const currentWaypointPosition = this.agent.currentWaypoint.Position;
+					const npcPosition = this.humanoid.RootPart!.Position;
+					const horizontalDelta = new Vector3(currentWaypointPosition.X - this.humanoid.RootPart!.Position.X, 0, currentWaypointPosition.Z - this.humanoid.RootPart!.Position.Z);
 
-				// if (distance < Pathfinding.MINIMUM_DISTANCE_FOR_SEEK) {
-				// this.humanoid.MoveTo(currentWaypointPosition);
-				// } else {
-				this.humanoid.Move(direction);
-				// }
+					const shouldNotSeek = horizontalDelta.Magnitude < Pathfinding.MINIMUM_DISTANCE_FOR_SEEK;
+					const hasReachedWaypoint = horizontalDelta.Magnitude < Pathfinding.MINIMUM_TARGET_REACHED_DISTANCE;
 
-				if (horizontalDelta.Magnitude < Pathfinding.MINIMUM_TARGET_REACHED_DISTANCE) this.agent.reachedWaypoint.fire();
+					if (shouldNotSeek || hasReachedWaypoint) {
+						if (shouldNotSeek) this.humanoid.MoveTo(currentWaypointPosition);
+						if (hasReachedWaypoint) this.agent.reachedWaypoint.fire();
 
-				this.waypointPart.Position = currentWaypointPosition;
+						return;
+					}
+
+					// Compute desired velocity
+					let desiredVelocity = currentWaypointPosition.sub(npcPosition);
+					// if (desiredVelocity.Magnitude < 1) {
+					// 	// Stop moving if close enough
+					// 	this.humanoid.Move(Vector3.zero);
+					// 	return;
+					// }
+					desiredVelocity = desiredVelocity.Unit.mul(this.humanoid.WalkSpeed);
+
+					// Approximate current velocity using humanoid's MoveDirection
+					const currentVelocity = this.humanoid.MoveDirection.mul(this.humanoid.WalkSpeed);
+
+					// Compute steering force
+					let steerVector = desiredVelocity.sub(currentVelocity);
+					const MAX_STEER = 16;
+
+					if (steerVector.Magnitude > MAX_STEER) {
+						steerVector = steerVector.Unit.mul(MAX_STEER);
+					}
+
+					// Apply as acceleration instead of direct movement
+					this.humanoid.Move(currentVelocity.add(steerVector).Unit);
+
+					if (horizontalDelta.Magnitude < Pathfinding.MINIMUM_TARGET_REACHED_DISTANCE) this.agent.reachedWaypoint.fire();
+
+					this.waypointPart[0].Position = currentWaypointPosition;
+				}
+
+				// const currentWaypointPosition = this.agent.currentWaypoint.Position;
+				// let desiredVelocity = currentWaypointPosition.sub(this.humanoid.RootPart!.Position);
+				// desiredVelocity = desiredVelocity.Unit;
+				// desiredVelocity = desiredVelocity.mul(this.humanoid.WalkSpeed);
+				// let steerVector = desiredVelocity.sub(this.humanoid.MoveDirection.mul(this.humanoid.WalkSpeed));
+
+				// const MAX_STEER = 16;
+
+				// if (steerVector.Magnitude > MAX_STEER) steerVector = steerVector.Unit.mul(MAX_STEER);
+
+				// // print(direction.Magnitude);
+
+
+				// // const distance = difference.Magnitude;
+				// // const direction = difference.Unit;
+
+				// // if (distance < Pathfinding.MINIMUM_DISTANCE_FOR_SEEK) {
+				// // 	this.humanoid.MoveTo(currentWaypointPosition);
+				// // } else {
+				// this.humanoid.Move(steerVector.div(this.humanoid.WalkSpeed));
+				// // }
 			}
 		} else {
 			this.enabled = false;
 		}
 
-		this.goalPart.Position = this.trip.goal;
-		this.originPart.Position = this.trip.origin;
+		this.goalPart[0].Position = this.trip.goal;
+		this.originPart[0].Position = this.trip.origin;
 	}
 
 	onActivatedChanged(activated: boolean): void {
 		if (activated) {
 			if (this.agent.currentTrip !== this.trip) this.agent.setCurrentTrip(this.trip);
-		} else {
-			if (this.agent.currentTrip === this.trip) this.agent.setCurrentTrip(undefined);
-		}
+		} else 
+		if (this.agent.currentTrip === this.trip) this.agent.setCurrentTrip(undefined);
+
+
+		this.goalPart[0].Transparency = !activated ? 1 : 0;
+		this.waypointPart[0].Transparency = !activated ? 1 : 0;
+		this.originPart[0].Transparency = !activated ? 1 : 0;
+		this.goalPart[1].Enabled = activated;
+		this.waypointPart[1].Enabled = activated;
+		this.originPart[1].Enabled = activated;
+	}
+
+	willDispose(): void {
+		this.goalPart[0].Destroy();
+		this.waypointPart[0].Destroy();
+		this.originPart[0].Destroy();
+
+		this.trip.dispose();
 	}
 }
 
 export class MoveToPositionMovement extends Movement {
 	public target: Vector3;
 
-	constructor(controller: AIBattleController, target: Vector3) {
-		super(controller);
+	constructor(controller: AIBattleController, name: string, target: Vector3) {
+		super(controller, name);
 
 		this.target = target;
 	}
@@ -122,13 +198,17 @@ export class MoveToPositionMovement extends Movement {
 	onActivatedChanged(activated: boolean): void {
 
 	}
+
+	willDispose(): void {
+
+	}
 }
 
 export class MoveToPartMovement extends Movement {
 	public target: BasePart;
 
-	constructor(controller: AIBattleController, target: BasePart) {
-		super(controller);
+	constructor(controller: AIBattleController, name: string, target: BasePart) {
+		super(controller, name);
 
 		this.target = target;
 	}
@@ -140,6 +220,10 @@ export class MoveToPartMovement extends Movement {
 	onActivatedChanged(activated: boolean): void {
 
 	}
+
+	willDispose(): void {
+
+	}
 }
 
 export class DefaultMovement extends Movement {
@@ -148,6 +232,10 @@ export class DefaultMovement extends Movement {
 	}
 
 	onActivatedChanged(activated: boolean): void {
+
+	}
+
+	willDispose(): void {
 
 	}
 }

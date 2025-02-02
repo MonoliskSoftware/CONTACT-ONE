@@ -1,4 +1,4 @@
-import { PathfindingService } from "@rbxts/services";
+import { PathfindingService, Workspace } from "@rbxts/services";
 import { Connection, Signal } from "CORP/shared/Libraries/Signal";
 import { dict } from "CORP/shared/Libraries/Utilities";
 
@@ -12,7 +12,7 @@ export namespace Pathfinding {
 	export const MIN_DISTANCE_FROM_GOAL_FOR_RECALCULATION = 10;
 	export const MIN_DISTANCE_FROM_GOAL_FOR_PATHFINDING = 20;
 
-	export class Trip {
+	export class AgentPath {
 		public readonly goal: Vector3;
 		public readonly agent: Agent;
 
@@ -24,22 +24,41 @@ export namespace Pathfinding {
 		public waypoints: PathWaypoint[] = [];
 		public finished = false;
 
-		constructor(goal: Vector3, agent: Agent) {
+		private debugPoints: Part[] = [];
+
+		constructor(goal: Vector3, agent: Agent, origin: Vector3 = agent.getOrigin()) {
 			this.goal = goal;
 			this.agent = agent;
-
-			this.recalculate();
+			this.recalculate(origin);
 		}
 
-		recalculate() {
-			this.origin = this.agent.getOrigin();
+		recalculate(origin = this.agent.getOrigin()) {
+			this.debugPoints.forEach(p => p.Destroy());
+			this.debugPoints.clear();
 
-			this.agent.path.ComputeAsync(this.origin, this.goal);
+			this.origin = origin;
+
+			this.agent.path.ComputeAsync(origin, this.goal);
 
 			if (this.agent.path.Status !== Enum.PathStatus.Success) throw `Got a bad status while pathfinding to ${this.goal}: ${this.agent.path.Status}`;
 
 			this.waypoints = this.agent.path.GetWaypoints();
 			this.nextWaypointIndex = 1;
+
+			this.waypoints.forEach(wp => {
+				const p = new Instance("Part", Workspace);
+
+				p.Size = Vector3.one.mul(3);
+				p.Anchored = true;
+				p.CanCollide = false;
+				p.CanQuery = false;
+				p.CanTouch = false;
+				p.Shape = Enum.PartType.Ball;
+
+				p.Position = wp.Position;
+
+				this.debugPoints.push(p);
+			});
 
 			if (this.waypoints.size() === 0) warn(`Pathfinding returned 0 waypoints`);
 
@@ -48,6 +67,9 @@ export namespace Pathfinding {
 		}
 
 		dispose() {
+			this.debugPoints.forEach(p => p.Destroy());
+			this.debugPoints.clear();
+			
 			(this as dict).agent = undefined;
 		}
 	}
@@ -55,7 +77,7 @@ export namespace Pathfinding {
 	export class Agent {
 		public readonly path: Path;
 		public readonly humanoid: Humanoid;
-		public currentTrip: Trip | undefined;
+		public currentTrip: AgentPath | undefined;
 		private readonly blockedConnection: RBXScriptConnection;
 		private readonly reachedConnection: Connection<[]>;
 		public isPathing = false;
@@ -71,7 +93,8 @@ export namespace Pathfinding {
 				AgentCanClimb: true,
 				AgentCanJump: true,
 				AgentHeight: 5,
-				AgentRadius: 2,
+				AgentRadius: 4,
+				WaypointSpacing: 128
 			});
 
 			this.humanoid = humanoid;
@@ -108,10 +131,10 @@ export namespace Pathfinding {
 		}
 
 		public createTrip(goal: Vector3) {
-			return new Trip(goal, this);
+			return new AgentPath(goal, this);
 		}
 
-		public setCurrentTrip(trip: Trip | undefined) {
+		public setCurrentTrip(trip: AgentPath | undefined) {
 			this.isPathing = trip !== undefined && trip.nextWaypointIndex < trip.waypoints.size() - 1;
 
 			this.currentTrip = trip;
@@ -120,5 +143,56 @@ export namespace Pathfinding {
 				this.currentWaypoint = trip.waypoints[trip.nextWaypointIndex];
 			}
 		}
+
+		public recalculateTripForNewTarget(existingTrip: AgentPath) {
+			const startIndex = findBestRecalculationNode(this.getOrigin(), existingTrip.waypoints.map(wp => wp.Position), existingTrip.goal);
+			const startingWaypoints = [];
+
+			if (startIndex !== undefined && startIndex > 0) {
+				for (let i = 0; i < existingTrip.waypoints.size(); i++) {
+					startingWaypoints.push(existingTrip.waypoints[i]);
+				}
+			}
+
+			const start = startingWaypoints.size() > 0 ? startingWaypoints[startingWaypoints.size() - 1].Position : this.getOrigin();
+
+			const newTrip = new AgentPath(existingTrip.goal, this, start);
+
+			newTrip.waypoints = startingWaypoints.move(0, -1, 0, newTrip.waypoints);
+
+			return newTrip;
+		}
+	}
+
+	export function findBestRecalculationNode(
+		npcPosition: Vector3,
+		existingPath: Vector3[],
+		newTarget: Vector3
+	): number | undefined {
+		if (existingPath.size() === 0) return undefined;
+
+		let bestIndex = -1;
+		let bestScore = math.huge;
+
+		const w1 = 1.0; // Weight for NPC distance
+		const w2 = 1.5; // Weight for target distance
+		const w3 = 0.5; // Weight for path deviation
+
+		for (let i = 0; i < existingPath.size(); i++) {
+			const node = existingPath[i];
+			const distToNPC = npcPosition.sub(node).Magnitude;
+			const distToTarget = node.sub(newTarget).Magnitude;
+			const pathDirection = node.sub(npcPosition).Unit;
+			const targetDirection = newTarget.sub(node).Unit;
+			const deviation = math.acos(math.max(-1, math.min(1, pathDirection.Dot(targetDirection))));
+
+			const score = w1 * distToNPC + w2 * distToTarget + w3 * deviation;
+			if (score < bestScore) {
+				bestScore = score;
+				bestIndex = i;
+			}
+		}
+
+		return bestIndex === -1 ? undefined : bestIndex;
 	}
 }

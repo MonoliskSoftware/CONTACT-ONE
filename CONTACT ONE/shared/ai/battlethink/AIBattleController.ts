@@ -20,7 +20,7 @@ const ATTACK_BEHAVIOR_PRIORITY = 100;
 const FORMATION_BEHAVIOR_PRIORITY = 0;
 
 const UPDATE_INTERVAL_ENABLED = true;
-const UPDATE_INTERVAL = .1;
+const UPDATE_INTERVAL = .25;
 
 export class AIBattleController extends CharacterController {
 	// Utility references
@@ -31,7 +31,7 @@ export class AIBattleController extends CharacterController {
 
 	public pathfindingAgent: Pathfinding.Agent = undefined as unknown as Pathfinding.Agent;
 
-	private pathfindingPromises: Promise<Pathfinding.Trip>[] = [];
+	private pathfindingPromises: Promise<Pathfinding.AgentPath>[] = [];
 
 	private heartbeatConnection: RBXScriptConnection | undefined;
 
@@ -52,6 +52,8 @@ export class AIBattleController extends CharacterController {
 
 	private lastUpdate = 0;
 
+	private movementNameValue: StringValue | undefined;
+
 	//////////////////////////////
 	// MOVEMENTS
 	//////////////////////////////
@@ -62,10 +64,10 @@ export class AIBattleController extends CharacterController {
 		return behavior;
 	}
 
-	public instantiateMovement<T extends Movement>(behaviorClazz: Constructable<T>, priority: number, ...args: unknown[]): T {
-		const behavior = new behaviorClazz(this, ...args) as T;
+	public instantiateMovement<T extends Movement>(behaviorClazz: Constructable<T>, name: string, priority: number, ...args: unknown[]): T {
+		const behavior = new behaviorClazz(this, name, ...args) as T;
 
-		this.movementLayers.push([new behaviorClazz(this, ...args), priority]);
+		this.movementLayers.push([behavior, priority]);
 		this.sortMovementLayers();
 
 		return behavior;
@@ -94,10 +96,12 @@ export class AIBattleController extends CharacterController {
 	// TASK SPECIFIC MOVEMENTS
 	//////////////////////////////
 	private instantiateTargetApproachMovement(target: Vector3) {
+		if (this.targetApproachMovement) warn("Hey!");
+
 		this.pathfindingPromises.push(new Promise(() => {
 			const trip = this.pathfindingAgent.createTrip(target);
 
-			this.targetApproachMovement = this.addMovement(new TripMovement(this, trip), APPROACH_BEHAVIOR_PRIORITY);
+			this.targetApproachMovement = this.addMovement(new TripMovement(this, "AttackApproachMovement", trip), APPROACH_BEHAVIOR_PRIORITY);
 		}));
 	}
 
@@ -122,11 +126,15 @@ export class AIBattleController extends CharacterController {
 		if (!UPDATE_INTERVAL_ENABLED || tick() - this.lastUpdate > UPDATE_INTERVAL) {
 			this.lastUpdate = tick();
 
+			deltaTime = UPDATE_INTERVAL_ENABLED ? UPDATE_INTERVAL : deltaTime;
+
 			this.updateAttack();
 
 			if (this.shouldScanForTargets()) this.scanForTargets();
 			if (this.shouldTryGetNewTarget() && this.unit.knownTargets.getValue().size() > 0) {
 				const target = this.unit.requestTarget();
+
+				print("Target acquired!");
 
 				if (target) this.characterReference.assignedTarget.setValue(target);
 			}
@@ -136,6 +144,8 @@ export class AIBattleController extends CharacterController {
 			const currentMovement = this.updateCurrentMovement();
 
 			if (currentMovement) currentMovement.update(deltaTime);
+
+			this.movementNameValue!.Value = currentMovement ? tostring(getmetatable(currentMovement)) : "none";
 		}
 	}
 
@@ -162,9 +172,7 @@ export class AIBattleController extends CharacterController {
 				if (!this.targetApproachMovement) {
 					this.instantiateTargetApproachMovement(targetPos);
 				} else if (targetPos.sub(this.targetApproachMovement.trip.goal).Magnitude > Pathfinding.MIN_DISTANCE_FROM_GOAL_FOR_RECALCULATION) {
-					this.targetApproachMovement.trip.dispose();
-					this.removeMovement(this.targetApproachMovement);
-
+					this.targetApproachMovement.dispose();
 					this.targetApproachMovement = undefined;
 
 					this.instantiateTargetApproachMovement(targetPos);
@@ -179,10 +187,11 @@ export class AIBattleController extends CharacterController {
 			}
 		} else {
 			if (this.targetApproachMovement) {
-				this.targetApproachMovement.trip.dispose();
-				this.removeMovement(this.targetApproachMovement);
+				this.targetApproachMovement.dispose();
+
 				this.targetApproachMovement = undefined;
 			}
+
 			if (this.targetAttackMovement) this.targetAttackMovement.enabled = false;
 		}
 	}
@@ -276,10 +285,12 @@ export class AIBattleController extends CharacterController {
 
 			this.heartbeatConnection = RunService.Heartbeat.Connect(delta => this.update(delta));
 
-			this.formationMovement = this.addMovement(new MoveToPositionMovement(this, Vector3.zero), FORMATION_BEHAVIOR_PRIORITY);
-			this.targetAttackMovement = this.addMovement(new MoveToPositionMovement(this, Vector3.zero), ATTACK_BEHAVIOR_PRIORITY);
+			this.formationMovement = this.addMovement(new MoveToPositionMovement(this, "FormationAssumptionMovement", Vector3.zero), FORMATION_BEHAVIOR_PRIORITY);
+			this.targetAttackMovement = this.addMovement(new MoveToPositionMovement(this, "AttackStrikeMovement", Vector3.zero), ATTACK_BEHAVIOR_PRIORITY);
 
-			this.addMovement(new DefaultMovement(this), DEFAULT_BEHAVIOR_PRIORITY);
+			this.addMovement(new DefaultMovement(this, "Default"), DEFAULT_BEHAVIOR_PRIORITY);
+		
+			this.movementNameValue = new Instance("StringValue", this.rig.Parent?.Parent);
 		}
 	}
 

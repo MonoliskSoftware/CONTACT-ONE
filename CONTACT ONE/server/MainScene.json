@@ -86,9 +86,9 @@
 				"CONTACT ONE/assets/prefabs/SpawnLocation"
 			],
 			"transform": [
-				0,
+				110,
 				0.5,
-				-100,
+				-239,
 				1,
 				0,
 				0,
@@ -124,9 +124,9 @@
 				"CONTACT ONE/assets/prefabs/SpawnLocation"
 			],
 			"transform": [
-				0,
+				204,
 				0.5,
-				100,
+				-640,
 				1,
 				0,
 				0,

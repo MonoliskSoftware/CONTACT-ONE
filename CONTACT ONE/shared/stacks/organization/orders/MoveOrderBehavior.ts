@@ -9,7 +9,7 @@ const MOVE_ORDER_PRIORITY = 50;
 
 export class MoveOrderBehavior extends OrderBehavior<MoveOrder> {
 	private movement: TripMovement = undefined as unknown as TripMovement;
-	private trip: Pathfinding.Trip = undefined as unknown as Pathfinding.Trip;
+	private trip: Pathfinding.AgentPath = undefined as unknown as Pathfinding.AgentPath;
 	private isCommanderChangedConnection: Connection<any> | undefined;
 
 	protected getSourceScript(): ModuleScript {
@@ -18,7 +18,7 @@ export class MoveOrderBehavior extends OrderBehavior<MoveOrder> {
 
 	public onStart(): void {
 		this.trip = this.controller.pathfindingAgent.createTrip(this.order.executionParameters.getValue().position);
-		this.movement = new TripMovement(this.controller, this.trip);
+		this.movement = new TripMovement(this.controller, "MoveOrderTrip", this.trip);
 		this.movement.enabled = false;
 
 		this.controller.addMovement(this.movement, MOVE_ORDER_PRIORITY);

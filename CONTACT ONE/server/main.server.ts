@@ -20,7 +20,7 @@ const q: Scenarios.ORBAT = {
 	factions: [
 		{
 			name: "AGF",
-			rootUnits: [TestTemplate]
+			rootUnits: [TestTemplate, TestTemplate]
 		},
 		{
 			name: "AOF",
