@@ -242,7 +242,7 @@ export class EnvironmentManager extends NetworkBehavior {
 		return this.getIsNightTime() ? 0 : this.bakedLighting.properties.Brightness;
 	}
 
-	private getTotalBaseSaturation(): number {
+	public getTotalBaseSaturation(): number {
 		return this.bakedLighting?.effects.reduce((total, current) => total + ((current[1] as Partial<ColorCorrectionEffect>).Saturation ?? 0), 0) ?? 0;
 	}
 

@@ -24,9 +24,16 @@ const q: Scenarios.ORBAT = {
 		},
 		{
 			name: "AOF",
-			rootUnits: [TestTemplate]
+			rootUnits: [TestTemplate, TestTemplate]
 		}
+	],
+	winConditions: [
+		{
+			losingFaction: "AGF",
+			type: "FactionElimination",
+			winFaction: "AOF"
+		} as Scenarios.FactionEliminationCondition
 	]
 };
 
-BattleManager.loadORBAT(q);
+BattleManager.getSingleton().loadORBAT(q);

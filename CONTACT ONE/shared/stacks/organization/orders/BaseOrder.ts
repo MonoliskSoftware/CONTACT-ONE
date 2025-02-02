@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { OrderBehavior } from "CONTACT ONE/shared/ai/battlethink/OrderBehavior";
 import { PlayerManager } from "CONTACT ONE/shared/players/PlayerManager";
 import { NetworkBehaviorVariableBinder } from "CONTACT ONE/shared/utilities/NetworkVariableBinder";
-import { dict, ServerSideOnly } from "CORP/shared/Libraries/Utilities";
+import { Constructable, dict, ServerSideOnly } from "CORP/shared/Libraries/Utilities";
 import { GameObject } from "CORP/shared/Scripts/Componentization/GameObject";
 import { NetworkBehavior } from "CORP/shared/Scripts/Networking/NetworkBehavior";
 import { NetworkVariable } from "CORP/shared/Scripts/Networking/NetworkVariable";
@@ -52,6 +53,11 @@ export abstract class BaseOrder<U extends Unit<any, any>, T extends dict> extend
 	 * Abstracted because we can't read executionParameterSpecification ourselves.
 	 */
 	public readonly abstract executionParameters: NetworkVariable<T>;
+
+	/**
+	 * Defines what OrderBehavior to use for AI.
+	 */
+	public readonly abstract orderBehavior: Constructable<OrderBehavior<any>>;
 
 	private readonly originUnitBinder = new NetworkBehaviorVariableBinder(this as BaseOrder<any, any>, this.originUnit, "onOrderAdded", "onOrderRemoving");
 
@@ -202,7 +208,7 @@ export abstract class BaseOrder<U extends Unit<any, any>, T extends dict> extend
 
 	@ServerSideOnly
 	public execute() {
-		this.getAssignedUnits().forEach(unit => unit.getMembersRecursive().forEach(member => member.onOrderExecuted(this)));
+		this.getAssignedUnits().forEach(unit => unit.getMembersRecursive().forEach(member => member.controller.getValue().onOrderReceived(this)));
 		this.onExecutionBegan();
 	}
 

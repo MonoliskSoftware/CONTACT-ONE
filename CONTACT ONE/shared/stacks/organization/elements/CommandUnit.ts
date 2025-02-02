@@ -62,6 +62,7 @@ export class CommandUnit extends Unit<CommandUnitParent, CommandUnit | BattleUni
 	}
 
 	public subordinateOnRemoved(subordinate: CommandUnit | BattleUnit) {
+		warn("removing a subordinate", getmetatable(subordinate));
 		this.subordinateRemoving.fire(subordinate);
 
 		this.subordinates.remove(this.subordinates.indexOf(subordinate));

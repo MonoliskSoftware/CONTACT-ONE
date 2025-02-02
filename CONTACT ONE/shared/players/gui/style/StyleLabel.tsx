@@ -6,6 +6,7 @@ export const DefaultTextLabelStyle = {
 	Size: UDim2.fromScale(0, 0),
 	TextColor3: new Color3(1, 1, 1),
 	TextSize: 32,
+	RichText: true,
 	TextWrapped: true,
 	TextXAlignment: Enum.TextXAlignment.Left,
 	FontFace: Font.fromName("Roboto"),

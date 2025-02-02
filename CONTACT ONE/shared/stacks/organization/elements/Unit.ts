@@ -72,16 +72,19 @@ export abstract class Unit<P extends BaseElement<any>, C extends BaseElement<any
 
 	public memberOnRemoving(member: Character) {
 		if (this.directMembers.includes(member)) {
-			if (member === this.commander.getValue() || !this.commander.getValue()) {
-				print(`Changing commander for ${this.getId()}`);
-				
-				this.commander.setValue(this.directMembers.find(otherMember => otherMember !== member) as Character);
-			}
+			if (RunService.IsServer() && (member === this.commander.getValue() || !this.commander.getValue())) this.assignNewCommander(member);
 
 			this.directMembers.remove(this.directMembers.indexOf(member));
 
 			if (RunService.IsServer()) this.checkIfShouldDestroy();
 		}
+	}
+
+	@ServerSideOnly
+	private assignNewCommander(ignoreMember: Character) {
+		print(`Changing commander for ${this.getId()}`);
+
+		this.commander.setValue(this.directMembers.find(otherMember => otherMember !== ignoreMember) as Character);
 	}
 
 	public willRemove(): void {
@@ -97,6 +100,7 @@ export abstract class Unit<P extends BaseElement<any>, C extends BaseElement<any
 	@ServerSideOnly
 	protected checkIfShouldDestroy(ignoreSubordinate?: Unit<any, any>): void {
 		warn(`${this.name.getValue()} now has ${this.directMembers.size()} members and ${this.subordinates.size()} subordinates!`);
+
 		if (this.directMembers.size() === 0 && (this.subordinates.size() === 0 || (this.subordinates.size() === 1 && this.subordinates.includes(ignoreSubordinate as unknown as C)))) {
 			let unit = this.parent;
 
@@ -107,8 +111,6 @@ export abstract class Unit<P extends BaseElement<any>, C extends BaseElement<any
 
 				tempUnit.checkIfShouldDestroy(this);
 			}
-
-			print(`${this.name.getValue()}`);
 
 			this.getGameObject().destroy();
 		}

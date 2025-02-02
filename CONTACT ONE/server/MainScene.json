@@ -26,8 +26,29 @@
 				},
 				{
 					"path": [
+						"CONTACT ONE/flow/GameStateManager",
+						"GameStateManager"
+					],
+					"state": {}
+				},
+				{
+					"path": [
+						"CONTACT ONE/stacks/BattleManager",
+						"BattleManager"
+					],
+					"state": {}
+				},
+				{
+					"path": [
 						"CONTACT ONE/players/PlayerManager",
 						"PlayerManager"
+					],
+					"state": {}
+				},
+				{
+					"path": [
+						"CONTACT ONE/characters/CharacterControllerManager",
+						"CharacterControllerManager"
 					],
 					"state": {}
 				},

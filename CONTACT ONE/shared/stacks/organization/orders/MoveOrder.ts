@@ -2,6 +2,7 @@ import { GameObject } from "CORP/shared/Scripts/Componentization/GameObject";
 import { NetworkVariable } from "CORP/shared/Scripts/Networking/NetworkVariable";
 import { CommandUnit } from "../elements/CommandUnit";
 import { BaseOrder } from "./BaseOrder";
+import { MoveOrderBehavior } from "./MoveOrderBehavior";
 
 export const MoveOrderParameters = {
 	position: Vector3.zero
@@ -10,6 +11,7 @@ export const MoveOrderParameters = {
 export class MoveOrder extends BaseOrder<CommandUnit, typeof MoveOrderParameters> {
 	public readonly executionParameterSpecification = MoveOrderParameters;
 	public readonly executionParameters = new NetworkVariable(this, this.executionParameterSpecification);
+	public readonly orderBehavior = MoveOrderBehavior;
 
 	public onStart(): void {
 		super.onStart();

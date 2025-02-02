@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from "@rbxts/react";
-import { StarterGui } from "@rbxts/services";
+import { RunService, StarterGui } from "@rbxts/services";
 import { Faction } from "CONTACT ONE/shared/stacks/organization/elements/Faction";
 import { GenericUnit } from "CONTACT ONE/shared/stacks/organization/elements/Unit";
 import { SpawnManager } from "CORP/shared/Scripts/Networking/SpawnManager";
@@ -37,8 +37,8 @@ export namespace ORBATViewer {
 		const [children, setChildren] = useState<GenericUnit[]>(props.unit.subordinates as GenericUnit[]);
 
 		useEffect(() => {
-			const subordinateAddedConnection = props.unit.subordinateAdded.connect(subordinate => setChildren(prev => [...prev, subordinate as unknown as GenericUnit]));
-			const subordinateRemovingConnection = props.unit.subordinateRemoving.connect(subordinate => setChildren(prev => prev.filter(other => other.getId() !== subordinate.getId())));
+			const subordinateAddedConnection = props.unit.subordinateAdded.connect(subordinate => setChildren(props.unit.subordinates as GenericUnit[]));
+			const subordinateRemovingConnection = props.unit.subordinateRemoving.connect(subordinate => setChildren(props.unit.subordinates.filter(other => other.getId() !== subordinate.getId()) as GenericUnit[]));
 
 			return () => {
 				subordinateAddedConnection.disconnect();
@@ -77,9 +77,10 @@ export namespace ORBATViewer {
 					<ElementDepthContext.Provider
 						value={depth + 1}
 					>
-						{props.unit.subordinates.map(child => <Element maxDepth={props.maxDepth} unit={child as GenericUnit} />)}
+						{children.map(child => <Element maxDepth={props.maxDepth} unit={child as GenericUnit} />)}
 					</ElementDepthContext.Provider>
 					<uilistlayout
+						HorizontalAlignment={Enum.HorizontalAlignment.Center}
 						FillDirection={depth === props.maxDepth ? Enum.FillDirection.Vertical : Enum.FillDirection.Horizontal}
 						SortOrder={Enum.SortOrder.LayoutOrder}
 					/>
@@ -93,6 +94,7 @@ export namespace ORBATViewer {
 	};
 
 	export const Window: React.FC<({ faction: Faction } | { root: GenericUnit })> = ((props: WindowProps) => {
+		const [goalPosition, setGoalPosition] = useState(Vector2.zero);
 		const [position, setPosition] = useState(Vector2.zero);
 		const [offset, setOffset] = useState(Vector2.zero);
 		const [isDragging, setIsDragging] = useState(false);
@@ -101,6 +103,14 @@ export namespace ORBATViewer {
 
 		const containerRef = useRef<Frame>(undefined);
 		const rootRef = useRef<ImageLabel>(undefined);
+
+		useEffect(() => {
+			const connection = RunService.RenderStepped.Connect((deltaTime: number) => {
+				setPosition(position.Lerp(goalPosition, deltaTime * 30));
+			});
+
+			return () => connection.Disconnect();
+		});
 
 		return (
 			<ElementSelectionContext.Provider value={{ selection: elementSelection, setSelection: setElementSelection }}>
@@ -131,7 +141,7 @@ export namespace ORBATViewer {
 									setIsDragging(true);
 								},
 								MouseMoved: (_, x, y) => {
-									if (isDragging) setPosition(new Vector2(x, y).sub(offset));
+									if (isDragging) setGoalPosition(new Vector2(x, y).sub(offset));
 								},
 								MouseButton1Up: () => setIsDragging(false),
 							}}
@@ -142,6 +152,10 @@ export namespace ORBATViewer {
 								BackgroundTransparency={1}
 								ref={containerRef}
 							>
+								<uilistlayout
+									FillDirection={Enum.FillDirection.Horizontal}
+									Padding={new UDim(0, 64)}
+								/>
 								{(props.faction || props.root) && <Root faction={props.faction} root={props.root as GenericUnit} />}
 							</frame>
 						</textbutton>
@@ -157,7 +171,17 @@ export namespace ORBATViewer {
 	});
 
 	const Root: React.FC<RootProps> = (props: RootProps) => {
-		const elements: GenericUnit[] = props.faction ? (props.faction.subordinates as unknown as GenericUnit[]) : [props.root as GenericUnit];
+		const [elements, setElements] = useState(props.faction ? (props.faction.subordinates as unknown as GenericUnit[]) : [props.root as GenericUnit]);
+
+		useEffect(() => {
+			setElements(props.faction ? (props.faction.subordinates as unknown as GenericUnit[]) : [props.root as GenericUnit]);
+		}, [props.faction, props.root]);
+
+		useEffect(() => {
+			const connections = elements.map(element => element.removing.connect(() => setElements(elements.filter(otherElement => otherElement.getId() !== element.getId()))));
+
+			return () => connections.forEach(conn => conn.disconnect());
+		}, [props]);
 
 		return <>
 			{elements.map(element => <Element unit={element} maxDepth={4} />)}
@@ -208,8 +232,20 @@ export namespace ORBATViewer {
 							Text={`Parent: ${currentElement.parent.getValue().name.getValue()}`}
 							FontFace={Font.fromName("Roboto", Enum.FontWeight.Bold)}
 						/>
-						<StyleButton
+						<StyleTextLabel
 							LayoutOrder={2}
+							TextSize={28}
+							Text={`<b>Class description:</b>${currentElement.classProfile.getValue().description}`}
+							FontFace={Font.fromName("Roboto")}
+						/>
+						<StyleTextLabel
+							LayoutOrder={3}
+							TextSize={28}
+							Text={`<b>Unit description:</b>${currentElement.sizeProfile.getValue().description}`}
+							FontFace={Font.fromName("Roboto")}
+						/>
+						<StyleButton
+							LayoutOrder={100}
 							Event={{
 								Activated: () => PlayerAssignmentsManager.singleton.requestUnitCommandAssumption(currentElement.getId())
 							}}

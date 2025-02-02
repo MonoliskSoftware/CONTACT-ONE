@@ -3,7 +3,7 @@ import { Connection, Signal } from "CORP/shared/Libraries/Signal";
 import { dict } from "CORP/shared/Libraries/Utilities";
 
 export namespace Pathfinding {
-	export const MINIMUM_TARGET_REACHED_DISTANCE = 2;
+	export const MINIMUM_TARGET_REACHED_DISTANCE = 1;
 	/**
 	 * Minimum distance from next waypoint to use the seek algorithm.
 	 */
@@ -14,13 +14,15 @@ export namespace Pathfinding {
 
 	export class Trip {
 		public readonly goal: Vector3;
+		public readonly agent: Agent;
+
 		/**
 		 * Cache of the origin for the latest calculation of the path.
 		 */
 		public origin: Vector3 = Vector3.zero;
 		public nextWaypointIndex: number = 0;
 		public waypoints: PathWaypoint[] = [];
-		private readonly agent: Agent;
+		public finished = false;
 
 		constructor(goal: Vector3, agent: Agent) {
 			this.goal = goal;
@@ -93,6 +95,8 @@ export namespace Pathfinding {
 
 					this.currentWaypoint = this.currentTrip.waypoints[this.currentTrip.nextWaypointIndex];
 				} else {
+					if (this.currentTrip) this.currentTrip.finished = true;
+
 					this.isPathing = false;
 					this.currentWaypoint = undefined;
 				}

@@ -15,6 +15,7 @@ import { GuardOrder } from "../../organization/orders/GuardOrder";
 import { MoveOrder } from "../../organization/orders/MoveOrder";
 import { CommandStackBehavior } from "../CommandStackBehavior";
 import { StackComponentProps } from "../StackBehavior";
+import { StackBehaviorState } from "../StackBehaviorState";
 
 const ALL_ORDERS = [MoveOrder, GuardOrder];
 
@@ -421,6 +422,21 @@ const OrderCreator: React.FC<{
 	</frame >;
 };
 
+const EliminatedScreen: React.FC<StackComponentProps<CommandStackBehavior>> = (props: StackComponentProps<CommandStackBehavior>) => {
+	const guiManagerContext = useContext(GuiManagerContext);
+
+	assert(guiManagerContext);
+
+	return <textbutton
+		Text={"go to menu"}
+		Event={{
+			Activated: () => props.behavior.tryExit()
+		}}
+		TextSize={100}
+		AutomaticSize={Enum.AutomaticSize.XY}
+	/>;
+};
+
 export const CommandStackComponent: React.FC<StackComponentProps<CommandStackBehavior>> = (props: StackComponentProps<CommandStackBehavior>) => {
 	const guiManagerContext = useContext(GuiManagerContext);
 
@@ -429,6 +445,13 @@ export const CommandStackComponent: React.FC<StackComponentProps<CommandStackBeh
 	const [controlledUnits, setControlledUnits] = useState<CommandUnit[]>(guiManagerContext.playerBehavior.commandedUnits);
 	const [selectedOrders, setSelectedOrders] = useState<BaseOrder<any, any>[]>([]);
 	const [commandUnit, setCommandUnit] = useState<CommandUnit | undefined>();
+	const [behaviorState, setBehaviorState] = useState(props.behavior.state.getValue());
+
+	useEffect(() => {
+		const conn = props.behavior.state.onValueChanged.connect(state => setBehaviorState(state));
+
+		return () => conn.disconnect();
+	}, [props.behavior]);
 
 	useEffect(() => {
 		const conn = guiManagerContext.playerBehavior.commandedUnitsChanged.connect(() => setControlledUnits(guiManagerContext.playerBehavior.commandedUnits));
@@ -450,34 +473,40 @@ export const CommandStackComponent: React.FC<StackComponentProps<CommandStackBeh
 
 	return (
 		<screengui>
-			<OrderEditor
-				rootUnit={commandUnit as Unit<any, any>}
-				orders={selectedOrders}
-				setOrders={setSelectedOrders}
-			/>
-			<frame
-				BackgroundTransparency={1}
-			>
-				<uiflexitem
-					FlexMode={Enum.UIFlexMode.Grow}
+			{behaviorState === StackBehaviorState.ELIMINATED ? <EliminatedScreen {...props} /> : <>
+				<OrderEditor
+					rootUnit={commandUnit as Unit<any, any>}
+					orders={selectedOrders}
+					setOrders={setSelectedOrders}
 				/>
-			</frame>
-			<OrderCreator
-				rootUnits={controlledUnits as CommandUnit[]}
-				commandUnit={commandUnit}
-				setCommandUnit={setCommandUnit}
-				orders={selectedOrders}
-				setOrders={setSelectedOrders}
-			/>
-			<uipadding
-				PaddingLeft={new UDim(0, 16)}
-				PaddingRight={new UDim(0, 16)}
-				PaddingBottom={new UDim(0, 16)}
-				PaddingTop={new UDim(0, 16)}
-			/>
-			<uilistlayout
-				FillDirection={Enum.FillDirection.Horizontal}
-			/>
+				<frame
+					BackgroundTransparency={1}
+				>
+					<uiflexitem
+						FlexMode={Enum.UIFlexMode.Grow}
+					/>
+				</frame>
+				<OrderCreator
+					rootUnits={controlledUnits as CommandUnit[]}
+					commandUnit={commandUnit}
+					setCommandUnit={setCommandUnit}
+					orders={selectedOrders}
+					setOrders={setSelectedOrders}
+				/>
+				<uipadding
+					PaddingLeft={new UDim(0, 16)}
+					PaddingRight={new UDim(0, 16)}
+					PaddingBottom={new UDim(0, 16)}
+					PaddingTop={new UDim(0, 16)}
+				/>
+				<uilistlayout
+					FillDirection={Enum.FillDirection.Horizontal}
+				/>
+			</>}
+			{/* <UnitSelector 
+				roots={controlledUnits}
+			/> */}
+
 		</screengui>
 	);
 };
