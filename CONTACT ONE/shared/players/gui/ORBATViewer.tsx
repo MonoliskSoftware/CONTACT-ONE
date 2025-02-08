@@ -232,7 +232,7 @@ export namespace ORBATViewer {
 							Text={`Parent: ${currentElement.parent.getValue().name.getValue()}`}
 							FontFace={Font.fromName("Roboto", Enum.FontWeight.Bold)}
 						/>
-						<StyleTextLabel
+						{/* <StyleTextLabel
 							LayoutOrder={2}
 							TextSize={28}
 							Text={`<b>Class description:</b>${currentElement.classProfile.getValue().description}`}
@@ -243,7 +243,7 @@ export namespace ORBATViewer {
 							TextSize={28}
 							Text={`<b>Unit description:</b>${currentElement.sizeProfile.getValue().description}`}
 							FontFace={Font.fromName("Roboto")}
-						/>
+						/> */}
 						<StyleButton
 							LayoutOrder={100}
 							Event={{
