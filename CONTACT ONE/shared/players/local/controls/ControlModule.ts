@@ -563,7 +563,8 @@ export class ControlModule {
 
 	UpdateTouchGuiVisibility() {
 		if (this.touchGui) {
-			const doShow = this.humanoid && GuiService.TouchControlsEnabled;
+			// Because some stacks not linked to humanoid use GetMoveVector, we shouldn't base things off of humanoid presence
+			const doShow = /*this.humanoid && */GuiService.TouchControlsEnabled;
 			this.touchGui.Enabled = !!doShow; // convert to bool
 		}
 	}
