@@ -1,0 +1,9 @@
+This project is for the game CONTACT ONE.
+
+CONTACT ONE is a ROBLOX FPS game that features RTS elements to enhance the weight/gravity of the battle.
+
+The game is seperated into the Battle Stack, where players fight on the frontlines, and the Command Stack, where players command units from above.
+
+Players can change in between the Battle and Command stacks at any time. When a character isn't controlled by a player, it'll be controlled by AI.
+
+The game is built with Rojo, Roblox-TS, and a custom made framework called "CORP", which is meant to imitate the componentized model of Unity and their Netcode for GameObjects networking system.

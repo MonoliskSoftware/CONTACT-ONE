@@ -227,5 +227,103 @@ export namespace UnitProfiles {
 			name: "Squad",
 			description: "Squads are compact teams of soldiers."
 		};
+
+        export namespace Experimental {
+            // Air Forces - Fixed Wing
+            export const TacticalAir: ClassProfile = {
+                iconId: "",
+                name: "Tactical Air",
+                description: "Tactical air units provide close air support, air interdiction, and tactical airlift capabilities. They excel at supporting ground forces with precision strikes and rapid response capabilities.",
+                acronym: "TAC"
+            };
+
+            export const AirSuperiority: ClassProfile = {
+                iconId: "",
+                name: "Air Superiority",
+                description: "Air Superiority fighters focus on achieving and maintaining air dominance through air-to-air combat. Essential for protecting other air assets and denying enemy air capabilities.",
+                acronym: "AS"
+            };
+
+            // Air Forces - Rotary Wing
+            export const AttackAviation: ClassProfile = {
+                iconId: "",
+                name: "Attack Aviation",
+                description: "Attack helicopter units provide close air support, anti-armor capabilities, and armed reconnaissance. Highly effective at supporting ground forces in close combat situations.",
+                acronym: "AA"
+            };
+
+            export const AirAssault: ClassProfile = {
+                iconId: "",
+                name: "Air Assault",
+                description: "Air Assault units combine transport helicopters with infantry for rapid deployment and vertical envelopment capabilities. Excellent for quick insertions and securing strategic positions.",
+                acronym: "AASLT"
+            };
+
+            // Naval Forces
+            export const NavalSurface: ClassProfile = {
+                iconId: "",
+                name: "Surface Warfare",
+                description: "Surface warfare vessels provide naval gunfire support, anti-ship capabilities, and coastal operations support. Essential for controlling sea lanes and supporting littoral operations.",
+                acronym: "SW"
+            };
+
+            export const Submarine: ClassProfile = {
+                iconId: "",
+                name: "Submarine Forces",
+                description: "Submarine units provide stealth reconnaissance, anti-ship capabilities, and strategic deterrence. Critical for controlling sea lanes and conducting covert operations.",
+                acronym: "SUB"
+            };
+
+            export const MarineInfantry: ClassProfile = {
+                iconId: "",
+                name: "Marine Infantry",
+                description: "Marine infantry units specialize in amphibious operations and coastal warfare. Capable of ship-to-shore operations and securing beachheads for larger forces.",
+                acronym: "MAR"
+            };
+
+            // Support/Specialized Units
+            export const AirDefense: ClassProfile = {
+                iconId: "",
+                name: "Air Defense Artillery",
+                description: "Air Defense units protect ground forces and installations from aerial threats using a mix of radar systems and surface-to-air weapons.",
+                acronym: "ADA"
+            };
+
+            export const SignalsIntel: ClassProfile = {
+                iconId: "",
+                name: "Signals Intelligence",
+                description: "SIGINT units provide electronic warfare capabilities, communications intelligence, and cyber operations support. Critical for modern battlefield information dominance.",
+                acronym: "SIG"
+            };
+
+            export const SpecialForces: ClassProfile = {
+                iconId: "",
+                name: "Special Forces",
+                description: "Elite units trained for unconventional warfare, special reconnaissance, and direct action missions. Operates independently or in support of conventional forces.",
+                acronym: "SF"
+            };
+
+            export const ReconnaissanceUnit: ClassProfile = {
+                iconId: "",
+                name: "Reconnaissance",
+                description: "Specialized units focused on battlefield intelligence gathering, target acquisition, and surveillance. Essential for providing tactical intelligence to command elements.",
+                acronym: "REC"
+            };
+
+            // Combat Support
+            export const MedicalSupport: ClassProfile = {
+                iconId: "",
+                name: "Medical Support",
+                description: "Medical units provide battlefield trauma care, evacuation services, and field hospital capabilities. Critical for maintaining combat effectiveness through casualty care.",
+                acronym: "MED"
+            };
+
+            export const ChemicalDefense: ClassProfile = {
+                iconId: "",
+                name: "Chemical Defense",
+                description: "CBRN defense units handle detection, protection, and decontamination from chemical, biological, radiological, and nuclear threats.",
+                acronym: "CBRN"
+            };
+        }
 	}
 }

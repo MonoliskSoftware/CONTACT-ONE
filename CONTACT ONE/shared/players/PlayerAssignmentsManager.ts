@@ -64,7 +64,7 @@ export class PlayerAssignmentsManager extends NetworkBehavior {
 
 		unit.controller.setValue(behavior);
 
-		behavior.state.setValue(PlayerState.IN_GAME);
 		behavior.stack.setValue(GameStack.COMMAND_STACK);
+		behavior.state.setValue(PlayerState.IN_GAME);
 	}
 }

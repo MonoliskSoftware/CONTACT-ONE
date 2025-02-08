@@ -29,10 +29,10 @@ let nearPlaneZ = 0;
 let projX = 0;
 let projY = 0;
 
-assert(camera);
+// assert(camera);
 
 function updateProjection() {
-	assert(camera);
+	if (!camera) return;
 
 	const fov = math.rad(camera.FieldOfView);
 	const view = camera.ViewportSize;
@@ -42,13 +42,18 @@ function updateProjection() {
 	projX = ar * projY;
 }
 
-camera.GetPropertyChangedSignal("FieldOfView").Connect(updateProjection);
-camera.GetPropertyChangedSignal("ViewportSize").Connect(updateProjection);
+if (camera) {
+	camera.GetPropertyChangedSignal("FieldOfView").Connect(updateProjection);
+	camera.GetPropertyChangedSignal("ViewportSize").Connect(updateProjection);
 
-updateProjection();
+	updateProjection();
 
-nearPlaneZ = camera.NearPlaneZ;
-camera.GetPropertyChangedSignal("NearPlaneZ").Connect(() => nearPlaneZ = camera.NearPlaneZ);
+	camera.GetPropertyChangedSignal("NearPlaneZ").Connect(() => nearPlaneZ = camera.NearPlaneZ);
+} else {
+	warn("Popper failed to find camera.");
+}
+
+nearPlaneZ = camera?.NearPlaneZ ?? -0.1;
 
 const excludeList: Instance[] = [];
 
@@ -111,7 +116,7 @@ refreshIgnoreList();
 let subjectRoot: Instance | undefined;
 let subjectPart: Instance | undefined;
 
-camera.GetPropertyChangedSignal("CameraSubject").Connect(() => {
+camera?.GetPropertyChangedSignal("CameraSubject").Connect(() => {
 	const subject = camera.CameraSubject;
 
 	if (subject && subject.IsA("Humanoid")) {

@@ -1,9 +1,13 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Character } from "../characters/Character";
+import { GameState, GameStateManager } from "../flow/GameStateManager";
 import { Path } from "../Libraries/Path";
+import { ServerSideOnly } from "../Libraries/Utilities";
 import { GameObject } from "../Scripts/Componentization/GameObject";
-import { ExtractNetworkVariables } from "../Scripts/Networking/NetworkBehavior";
+import { ExtractNetworkVariables, NetworkBehavior } from "../Scripts/Networking/NetworkBehavior";
 import { Networking } from "../Scripts/Networking/Networking";
 import { NetworkObject } from "../Scripts/Networking/NetworkObject";
+import { NetworkVariable } from "../Scripts/Networking/NetworkVariable";
 import { Scene } from "../Scripts/Scenes/Scene";
 import { SceneManager } from "../Scripts/Scenes/SceneManager";
 import { BaseElement } from "./organization/elements/BaseElement";
@@ -25,7 +29,29 @@ function createNetworkedGameObject(name: string = "GameObject", parent: GameObje
 	return gameObject;
 }
 
-export class BattleManager {
+export class BattleManager extends NetworkBehavior {
+	private static singleton: BattleManager;
+
+	public readonly currentScenario = new NetworkVariable<Scenarios.ORBAT>(this, undefined as unknown as Scenarios.ORBAT);
+
+	constructor(gameObject: GameObject) {
+		super(gameObject);
+
+		BattleManager.singleton = this;
+	}
+
+	public onStart(): void {
+
+	}
+
+	public willRemove(): void {
+
+	}
+
+	protected getSourceScript(): ModuleScript {
+		return script as ModuleScript;
+	}
+
 	/**
 	 * Imports a unit based on the template provided and returns it.
 	 * 
@@ -34,8 +60,8 @@ export class BattleManager {
 	 * @param index Index in subordinates of the new unit.
 	 * @returns Newly created unit.
 	 */
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	public static importUnit(parent: BaseElement<any>, template: UnitTemplates.Template, index: number) {
+	@ServerSideOnly
+	public importUnit(parent: BaseElement<any>, template: UnitTemplates.Template, index: number) {
 		const constructor = template.stack === GameStack.COMMAND_STACK ? CommandUnit : BattleUnit;
 		const name = template.nameOverride ?? UnitProfiles.generateName(template.sizeProfile, template.classProfile, index);
 
@@ -58,7 +84,7 @@ export class BattleManager {
 				} satisfies ExtractNetworkVariables<Character> as unknown as Map<string, Networking.NetworkableTypes>)
 			});
 
-			unit.directMembers.push(char);
+			if (index === 0) unit.commander.setValue(char);
 
 			const fact = unit instanceof CommandUnit ? unit.getFaction() : unit.getCommandUnit()?.getFaction();
 
@@ -78,7 +104,8 @@ export class BattleManager {
 		return unit;
 	}
 
-	public static importFaction(description: Scenarios.FactionDescription): Faction {
+	@ServerSideOnly
+	public importFaction(description: Scenarios.FactionDescription): Faction {
 		const faction = createNetworkedGameObject(description.name).addComponent(Faction, {
 			initialNetworkVariableStates: ({
 				name: description.name
@@ -90,7 +117,31 @@ export class BattleManager {
 		return faction;
 	}
 
-	public static loadORBAT(orbat: Scenarios.ORBAT) {
+	private listenToWinCondition(condition: Scenarios.WinCondition) {
+		if (condition.type === "FactionElimination") {
+			const factionCondition = condition as Scenarios.FactionEliminationCondition;
+			const faction = Faction.factions.get(factionCondition.losingFaction);
+
+			faction!.eliminated.connect(() => GameStateManager.getSingleton().onWin({
+				winningFaction: (condition as { winFaction: string }).winFaction,
+				wasStalemate: (condition as { stalemate: boolean }).stalemate
+			}));
+		}
+	}
+
+	@ServerSideOnly
+	public loadORBAT(orbat: Scenarios.ORBAT) {
+		const gameStateManager = GameStateManager.getSingleton();
+
+		gameStateManager.state.setValue(GameState.PREPARATION);
+
 		orbat.factions.forEach(faction => this.importFaction(faction));
+		orbat.winConditions.forEach(condition => this.listenToWinCondition(condition));
+
+		gameStateManager.state.setValue(GameState.ACTION);
+	}
+
+	public static getSingleton() {
+		return this.singleton;
 	}
 }

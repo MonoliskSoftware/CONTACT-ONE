@@ -8,6 +8,10 @@ export const DefaultImageButtonStyle = {
 	ImageTransparency: 1
 } satisfies React.InstanceProps<ImageButton>;
 
+export const ButtonDisabledProps = {
+	AutoButtonColor: false,
+} satisfies React.InstanceProps<ImageButton>;
+
 export const DefaultImageButtonChildren = (
 	<React.Fragment>
 		<uipadding

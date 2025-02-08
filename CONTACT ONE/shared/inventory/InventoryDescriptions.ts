@@ -1,14 +1,25 @@
+import { SceneSerialization } from "../Scripts/Serialization/SceneSerialization";
+import { NestedArray } from "../stacks/organization/templating/UnitTemplates";
+import { Item } from "./Item";
+
 export namespace InventoryDescriptions {
-	export interface InventoryPreset {
+	export interface InventoryPreset<T extends PresetEquipmentDescription> {
 		/**
 		 * Storage built into the inventory.
 		 */
-		integratedStorage: Vector2,
+		integratedStorage: number,
 		
-		equipmentPreset: PresetEquipmentDescription,
+		equipmentPreset: T,
 	}
 
 	export type PresetEquipmentDescription = {
-		[key: string | number]: number
+		[key: string | number]: typeof Item
+	}
+
+	export interface Loadout<T extends InventoryPreset<U>, U extends PresetEquipmentDescription> {
+		integratedStorageContents: NestedArray<typeof Item>,
+		equipment: {
+			[key in keyof U]: SceneSerialization.ComponentDescription<Item>
+		}
 	}
 }

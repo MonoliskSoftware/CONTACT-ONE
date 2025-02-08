@@ -7,10 +7,13 @@ import { PlayerState } from "../PlayerState";
 import { GameGui } from "./GameGui";
 import { GuiManagerContext } from "./GuiManagerContext";
 import { LobbyGui } from "./Lobby";
+import { Debriefing } from "./debriefing/Debriefing";
 
 export const PlayerStateComponentConstructors = {
 	[PlayerState.LOBBY]: LobbyGui,
-	[PlayerState.IN_GAME]: GameGui
+	[PlayerState.IN_GAME]: GameGui,
+	[PlayerState.ELIMINATED]: GameGui,
+	[PlayerState.DEBRIEFING]: Debriefing
 } as { [key in PlayerState]: Constructable<React.Component> | React.FC };
 
 const RootGui = ({ guiManager }: { guiManager: GuiManager }): React.ReactNode => {

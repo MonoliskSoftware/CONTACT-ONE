@@ -1,10 +1,14 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 export namespace EnvironmentDescriptions {
+	export type PostEffectClasses = { [P in "ColorCorrectionEffect" | "BloomEffect" | "SunRaysEffect"]: CreatableInstances[P] }
+
+	export type LightingEffectDescription<T extends keyof PostEffectClasses> = [T, Partial<InstanceProperties<PostEffectClasses[T]>>];
+
 	/**
 	 * Lighting properties required for certain game features to function.
 	 */
-	export type RequiredLightingProperties = {
-		Brightness: number;
-	}
+	export type RequiredLightingProperties = "Brightness";
 
 	/**
 	 * Describes baked lighting settings which would not be affected by the {@link LightingState}.
@@ -19,11 +23,11 @@ export namespace EnvironmentDescriptions {
 		 * 
 		 * !!! SOME PROPERTIES ARE REQUIRED !!!
 		 */
-		properties: RequiredLightingProperties & Partial<Lighting>;
+		properties: Required<Pick<InstanceProperties<Lighting>, RequiredLightingProperties>> & Partial<InstanceProperties<Lighting>>;
 		/**
 		 * Lighting effect descriptions (post-processing, etc.).
 		 */
-		effects: ["ColorCorrectionEffect" | "BloomEffect", (Partial<ColorCorrectionEffect> | Partial<BloomEffect>)][];
+		effects: LightingEffectDescription<keyof PostEffectClasses>[];
 	}
 
 	/**

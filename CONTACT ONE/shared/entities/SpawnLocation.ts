@@ -1,3 +1,4 @@
+import Object from "@rbxts/object-utils";
 import { NetworkBehavior } from "../Scripts/Networking/NetworkBehavior";
 import { SpawnManager } from "../Scripts/Networking/SpawnManager";
 
@@ -17,6 +18,6 @@ export class SpawnLocation extends NetworkBehavior {
 	}
 
 	public static getSpawnLocationOfFaction(factionTag: string) {
-		return SpawnManager.spawnedNetworkBehaviors.find(val => val instanceof SpawnLocation && val.factionTag === factionTag);
+		return Object.values(SpawnManager.spawnedNetworkBehaviors).find(val => val instanceof SpawnLocation && val.factionTag === factionTag);
 	}
 }

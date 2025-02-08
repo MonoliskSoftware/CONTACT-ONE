@@ -1,3 +1,4 @@
+import Object from "@rbxts/object-utils";
 import React, { useEffect, useState } from "@rbxts/react";
 import { Faction } from "CONTACT ONE/shared/stacks/organization/elements/Faction";
 import { SpawnManager } from "CORP/shared/Scripts/Networking/SpawnManager";
@@ -86,7 +87,7 @@ export namespace FactionSelector {
 	};
 
 	export const Selector: React.FC<SelectorProps> = () => {
-		const [factions, setFactions] = useState(SpawnManager.spawnedNetworkBehaviors.filter(behavior => behavior instanceof Faction));
+		const [factions, setFactions] = useState(Object.values(SpawnManager.spawnedNetworkBehaviors).filter(behavior => behavior instanceof Faction));
 
 		useEffect(() => {
 			// Subscribe to events
@@ -94,7 +95,7 @@ export namespace FactionSelector {
 				if (behavior instanceof Faction) setFactions(previousFactions => [...previousFactions, behavior]);
 			});
 
-			const removingConnection = SpawnManager.onNetworkBehaviorDestroyed.connect(behavior => {
+			const removingConnection = SpawnManager.onNetworkBehaviorDestroying.connect(behavior => {
 				if (behavior instanceof Faction) setFactions(previousFactions => previousFactions.filter(other => other !== behavior));
 			});
 

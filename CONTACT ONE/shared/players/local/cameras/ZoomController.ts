@@ -101,25 +101,26 @@ export class ZoomController {
 	}
 
 	Update(renderDt: number, focus: CFrame, extrapolation: Extrapolation) {
-		let poppedZoom = math.huge;
+		let poppedZoom = MIN_FOCUS_DIST; // Start with the minimum distance
 
 		if (this.zoomSpring.goal > DIST_OPAQUE) {
-			// Make a pessimistic estimate of zoom distance for this step without accounting for poppercam
-			const maxPossibleZoom = math.max(
+			// Instead of calculating the maximum possible zoom, calculate the minimum zoom
+			const minPossibleZoom = math.min(
 				this.zoomSpring.x,
 				stepTargetZoom(this.zoomSpring.goal, zoomDelta, cameraMinZoomDistance, cameraMaxZoomDistance)
 			);
 
-			// Run the Popper algorithm on the feasible zoom range, [MIN_FOCUS_DIST, maxPossibleZoom]
+			// Run the Popper algorithm on the feasible zoom range, [MIN_FOCUS_DIST, minPossibleZoom]
 			poppedZoom = Popper(
 				focus.mul(new CFrame(0, 0, MIN_FOCUS_DIST)),
-				maxPossibleZoom - MIN_FOCUS_DIST,
+				minPossibleZoom - MIN_FOCUS_DIST,
 				extrapolation
 			) + MIN_FOCUS_DIST;
 		}
 
-		this.zoomSpring.minValue = MIN_FOCUS_DIST;
-		this.zoomSpring.maxValue = math.min(cameraMaxZoomDistance, poppedZoom);
+		// Update zoomSpring limits based on minimum distance logic
+		this.zoomSpring.minValue = math.max(MIN_FOCUS_DIST, poppedZoom); // Use the calculated minimum zoom
+		this.zoomSpring.maxValue = cameraMaxZoomDistance; // Allow zooming out fully if needed
 
 		return this.zoomSpring.Step(renderDt);
 	}

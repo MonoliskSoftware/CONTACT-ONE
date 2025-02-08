@@ -8,11 +8,11 @@ export class FallbackStackBehavior extends StackBehavior {
 	public readonly guiComponent = () => React.createElement("TextButton");
 
 	public onActivated(): void {
-		print("Fallback stack activating!");
+		// print("Fallback stack activating!");
 	}
 	
 	public willDeactivate(): void {
-		print("Fallback stack deactivating!");
+		// print("Fallback stack deactivating!");
 	}
 
 	public onStart(): void {
