@@ -2,7 +2,10 @@
 import { RunService } from "@rbxts/services";
 import { AIBattleController } from "../ai/battlethink/AIBattleController";
 import { CharacterController } from "../controllers/CharacterController";
-import { SpawnLocation } from "../entities/SpawnLocation";
+import { Inventory } from "../inventory/Inventory";
+import { InventoryDescriptions } from "../inventory/InventoryDescriptions";
+import { ToolInterface } from "../inventory/tools/ToolInterface";
+import { BlasterWeapon } from "../items/weapons/BlasterWeapon";
 import Collector from "../Libraries/GarbageCollector";
 import { Signal } from "../Libraries/Signal";
 import { Constructable, ServerSideOnly, Utilities } from "../Libraries/Utilities";
@@ -26,22 +29,36 @@ export interface Rig extends Model {
 	HumanoidRootPart: BasePart,
 }
 
+export enum CharacterInventoryEquipmentType {
+	PRIMARY,
+	SECONDARY
+}
+
+export const CharacterEquipmentDescription: InventoryDescriptions.PresetEquipmentDescription = {
+	[CharacterInventoryEquipmentType.PRIMARY]: BlasterWeapon
+};
+
+export const CharacterInventory: InventoryDescriptions.InventoryPreset<typeof CharacterEquipmentDescription> = {
+	integratedStorage: 4,
+	equipmentPreset: CharacterEquipmentDescription
+};
+
 export class Character extends NetworkBehavior {
 	/**
 	 * Reference to the unit this character is assigned to, or undefined if none.
 	 */
-	public readonly unit = new NetworkVariable(this, undefined as unknown as Unit<any, any>);
+	public readonly unit = new NetworkVariable<Unit<any, any>>(this, undefined!);
 
 	private readonly unitBinder = new NetworkBehaviorVariableBinder(this as Character, this.unit, "memberOnAdded", "memberOnRemoving");
 
 	/**
 	 * Reference to the rig instance.
 	 */
-	public readonly rig = new NetworkVariable<Rig>(this, undefined as unknown as Rig);
+	public readonly rig = new NetworkVariable<Rig>(this, undefined!);
 
-	public readonly assignedTarget = new NetworkVariable<Character>(this, undefined as unknown as Character);
+	public readonly assignedTarget = new NetworkVariable<Character>(this, undefined!);
 
-	public readonly controller = new NetworkVariable<CharacterController>(this, undefined as unknown as CharacterController);
+	public readonly controller = new NetworkVariable<CharacterController>(this, undefined!);
 
 	// SIGNALS
 	public readonly onIsCommanderChanged = new Signal<[boolean]>(`${this.getId()}IsCommanderChanged`);
@@ -52,26 +69,21 @@ export class Character extends NetworkBehavior {
 
 	public static defaultController: Constructable<CharacterController>;
 
-	// private lastUpdate = 0;
-
-	// private currentOrder: BaseOrder<any, any> | undefined;
-
-	// // Guard order state
-	// private assignedGuardNode: Vector3 | undefined;
-
-	// // Priority level:
-	// // Top: attack trips
-	// private currentAttackTrip: Pathfinding.Trip | undefined;
-	// // Medium: order trips
-	// private currentOrderTrip: Pathfinding.Trip | undefined;
+	// INVENTORY STUFF
+	public readonly inventory = new NetworkVariable<Inventory<typeof CharacterInventory>>(this, this.getGameObject().addComponent<Inventory<typeof CharacterInventory>>(Inventory, { preset: CharacterInventory }));
+	public readonly toolInterface = new NetworkVariable<ToolInterface<typeof CharacterInventory>>(this, this.getGameObject().addComponent<ToolInterface<typeof CharacterInventory>>(ToolInterface, {
+		initialNetworkVariableStates: ({
+			inventory: this.inventory.getValue()
+		} satisfies ExtractNetworkVariables<ToolInterface<typeof CharacterInventory>> as unknown as Map<string, Networking.NetworkableTypes>)
+	}));
 
 	public onStart(): void {
 		if (RunService.IsServer()) {
+			// needs refinement
 			this.initializeRig();
 
-			this.rig.getValue().PivotTo(SpawnLocation.getSpawnLocationOfFaction((this.unit.getValue() as CommandUnit | BattleUnit).getFaction()?.name.getValue() ?? "")?.getGameObject().getInstance().GetPivot() ?? CFrame.identity);
-
-			this.collector.add(RunService.Heartbeat.Connect(deltaTime => this.update(deltaTime)));
+			// this.rig.getValue().PivotTo(SpawnLocation.getSpawnLocationOfFaction((this.unit.getValue() as CommandUnit | BattleUnit).getFaction()?.name.getValue() ?? "")?.getGameObject().getInstance().GetPivot() ?? CFrame.identity);
+			this.rig.getValue().PivotTo(new CFrame((math.random() * 2 - 1) * 1024, 0, (math.random() * 2 - 1) * 1024));
 
 			task.delay(1, () => {
 				// NEEDS BETTER IMPLEMENTATION
@@ -165,74 +177,11 @@ export class Character extends NetworkBehavior {
 		this.onIsCommanderChanged.fire(false);
 	}
 
-	private update(deltaTime: number) {
-		// if (!UPDATE_INTERVAL_ENABLED || tick() - this.lastUpdate > UPDATE_INTERVAL) {
-		// 	this.lastUpdate = tick();
-		// 	const humanoid = this.getHumanoid();
-
-		// 	this.updateTargeting();
-
-		// 	if (this.pathfindingAgent.isPathing) {
-		// 		if (!this.pathfindingAgent.currentWaypoint) {
-		// 			warn(`Agent is pathfinding, but no current waypoint is assigned.`);
-		// 		} else {
-		// 			const currentWaypointPosition = this.pathfindingAgent.currentWaypoint.Position;
-		// 			const difference = currentWaypointPosition.sub(humanoid.RootPart!.Position);
-		// 			const distance = difference.Magnitude;
-		// 			const direction = difference.Unit;
-		// 			const horizontalDelta = new Vector3(currentWaypointPosition.X - humanoid.RootPart!.Position.X, 0, currentWaypointPosition.Z - humanoid.RootPart!.Position.Z);
-
-		// 			if (distance < Pathfinding.MINIMUM_DISTANCE_FOR_SEEK) {
-		// 				humanoid.MoveTo(currentWaypointPosition);
-		// 			} else {
-		// 				humanoid.Move(direction);
-		// 			}
-
-		// 			if (horizontalDelta.Magnitude < Pathfinding.MINIMUM_TARGET_REACHED_DISTANCE) this.pathfindingAgent.reachedWaypoint.fire();
-		// 		}
-		// 	} else if (this.assignedTarget.getValue()) {
-		// 		humanoid.MoveTo(this.assignedTarget.getValue().rig.getValue().GetPivot().Position);
-		// 	} else if (this.currentOrder instanceof GuardOrder && this.assignedGuardNode) {
-		// 		humanoid.MoveTo(this.assignedGuardNode);
-		// 	} else {
-		// 		humanoid.Move(Vector3.zero);
-		// 	}
-
-		// 	if (this.shouldScanForTargets()) this.scanForTargets();
-		// 	if (this.shouldTryGetNewTarget() && this.unit.getValue().knownTargets.getValue().size() > 0) {
-		// 		const target = this.unit.getValue().requestTarget();
-
-		// 		if (target) this.assignedTarget.setValue(target);
-		// 	}
-
-		// 	if (!this.isCommander() && this.shouldMaintainFormation()) {
-		// 		const unit = this.unit.getValue();
-		// 		const index = unit.directMembers.indexOf(this);
-
-		// 		const commanderOrigin = unit.commander.getValue().rig.getValue().GetPivot();
-
-		// 		const final = Formations.FormationComputers[unit.formation.getValue()](index);
-
-		// 		humanoid.MoveTo(commanderOrigin.mul(new CFrame(final.X * 8, 0, final.Y * 8)).Position);
-		// 	}
-		// }
-	}
-
 	private onDied() {
 		this.died.fire();
 
 		if (!Utilities.wasDestroyed(this)) this.getGameObject().destroy();
 	}
-
-	// public onOrderExecuted(order: BaseOrder<any, any>) {
-	// 	this.currentOrder = order;
-
-	// 	if (order instanceof MoveOrder && this.isCommander()) {
-	// 		this.currentOrderTrip = this.pathfindingAgent.createTrip(order.executionParameters.getValue().position);
-	// 	} else if (order instanceof GuardOrder) {
-	// 		this.findGuardNode();
-	// 	}
-	// }
 
 	//////////////////////////////
 	// GETTERS
