@@ -1,5 +1,5 @@
 import React, { StrictMode, useEffect, useState } from "@rbxts/react";
-import { createRoot } from "@rbxts/react-roblox";
+import ReactRoblox, { createRoot } from "@rbxts/react-roblox";
 import { Players } from "@rbxts/services";
 import { Constructable } from "CORP/shared/Libraries/Utilities";
 import { PlayerBehavior } from "../PlayerBehavior";
@@ -40,10 +40,17 @@ const RootGui = ({ guiManager }: { guiManager: GuiManager }): React.ReactNode =>
 export class GuiManager {
 	readonly playerBehavior: PlayerBehavior;
 
-	private readonly rootInstance = createRoot(Players.LocalPlayer.WaitForChild("PlayerGui"));
+	private readonly rootFolder: Folder;
+	private readonly rootInstance: ReactRoblox.Root;
 
 	constructor(playerBehavior: PlayerBehavior) {
 		this.playerBehavior = playerBehavior;
+		this.rootFolder = new Instance("Folder");
+
+		this.rootFolder.Parent = Players.LocalPlayer.WaitForChild("PlayerGui");
+		this.rootFolder.Name = "Root";
+		
+		this.rootInstance = createRoot(this.rootFolder);
 	}
 
 	initialize() {
