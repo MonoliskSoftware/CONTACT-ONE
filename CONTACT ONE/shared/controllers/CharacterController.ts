@@ -5,7 +5,7 @@ import { NetworkVariable } from "../Scripts/Networking/NetworkVariable";
 import { BaseOrder } from "../stacks/organization/orders/BaseOrder";
 
 export abstract class CharacterController extends NetworkBehavior {
-	public readonly character = new NetworkVariable(this, undefined as unknown as Character);
+	public readonly character = new NetworkVariable<Character>(this, undefined!);
 
 	public abstract onOrderReceived(order: BaseOrder<any, any>): void;
 }

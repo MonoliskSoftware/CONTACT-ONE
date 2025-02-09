@@ -13,7 +13,8 @@ export namespace Pathfinding {
 	export const MIN_DISTANCE_FROM_GOAL_FOR_PATHFINDING = 20;
 
 	export class AgentPath {
-		public readonly goal: Vector3;
+		public goal: Vector3;
+
 		public readonly agent: Agent;
 
 		/**
@@ -69,7 +70,7 @@ export namespace Pathfinding {
 		dispose() {
 			this.debugPoints.forEach(p => p.Destroy());
 			this.debugPoints.clear();
-			
+
 			(this as dict).agent = undefined;
 		}
 	}
@@ -85,13 +86,14 @@ export namespace Pathfinding {
 		 * Used by Character to indicate when a waypoint was reached.
 		 */
 		public readonly reachedWaypoint = new Signal<[]>(`agentReachedWaypoint`);
+		public readonly didCompletePath = new Signal<[AgentPath]>(`didCompletePath`);
 
 		public currentWaypoint: PathWaypoint | undefined;
 
 		constructor(humanoid: Humanoid) {
 			this.path = PathfindingService.CreatePath({
 				AgentCanClimb: true,
-				AgentCanJump: true,
+				AgentCanJump: false,
 				AgentHeight: 5,
 				AgentRadius: 4,
 				WaypointSpacing: 128
@@ -118,7 +120,11 @@ export namespace Pathfinding {
 
 					this.currentWaypoint = this.currentTrip.waypoints[this.currentTrip.nextWaypointIndex];
 				} else {
-					if (this.currentTrip) this.currentTrip.finished = true;
+					if (this.currentTrip) {
+						this.currentTrip.finished = true;
+						
+						this.didCompletePath.fire(this.currentTrip);
+					}
 
 					this.isPathing = false;
 					this.currentWaypoint = undefined;

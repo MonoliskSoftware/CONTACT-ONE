@@ -19,17 +19,17 @@ const APPROACH_BEHAVIOR_PRIORITY = 99;
 const ATTACK_BEHAVIOR_PRIORITY = 100;
 const FORMATION_BEHAVIOR_PRIORITY = 0;
 
-const UPDATE_INTERVAL_ENABLED = true;
+const UPDATE_INTERVAL_ENABLED = false;
 const UPDATE_INTERVAL = .25;
 
 export class AIBattleController extends CharacterController {
 	// Utility references
-	private characterReference = undefined as unknown as Character;
-	private humanoid = undefined as unknown as Humanoid;
-	private rig = undefined as unknown as Rig;
-	private unit = undefined as unknown as Unit<any, any>;
+	private characterReference!: Character;
+	private humanoid!: Humanoid;
+	private rig!: Rig;
+	private unit!: Unit<any, any>;
 
-	public pathfindingAgent: Pathfinding.Agent = undefined as unknown as Pathfinding.Agent;
+	public pathfindingAgent!: Pathfinding.Agent;
 
 	private pathfindingPromises: Promise<Pathfinding.AgentPath>[] = [];
 
@@ -289,7 +289,7 @@ export class AIBattleController extends CharacterController {
 			this.targetAttackMovement = this.addMovement(new MoveToPositionMovement(this, "AttackStrikeMovement", Vector3.zero), ATTACK_BEHAVIOR_PRIORITY);
 
 			this.addMovement(new DefaultMovement(this, "Default"), DEFAULT_BEHAVIOR_PRIORITY);
-		
+
 			this.movementNameValue = new Instance("StringValue", this.rig.Parent?.Parent);
 		}
 	}

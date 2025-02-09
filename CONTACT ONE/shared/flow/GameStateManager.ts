@@ -19,7 +19,7 @@ export class GameStateManager extends NetworkBehavior {
 	private static singleton: GameStateManager;
 
 	public readonly state = new NetworkVariable<GameState>(this, GameState.INTERMISSION);
-	public readonly lastWin = new NetworkVariable<WinState>(this, undefined as unknown as WinState);
+	public readonly lastWin = new NetworkVariable<WinState>(this, undefined!);
 
 	constructor(gameObject: GameObject) {
 		super(gameObject);

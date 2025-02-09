@@ -63,8 +63,8 @@ export default class CharacterAnimator {
 	// Instance fields
 	pose = HumanAnimationPose.STANDING;
 
-	humanoid: Humanoid = undefined as unknown as Humanoid;
-	animator: Animator = undefined as unknown as Animator;
+	humanoid!: Humanoid;
+	animator!: Animator;
 	animationSpeedDampeningObject?: NumberValue;
 
 	jumpAnimTime = 0;

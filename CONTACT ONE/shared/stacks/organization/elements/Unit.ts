@@ -1,5 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { RunService } from "@rbxts/services";
+import { ClearArea } from "CONTACT ONE/shared/ai/battlethink/manuevers/ClearArea";
+import { NodeManager } from "CONTACT ONE/shared/ai/battlethink/nodes/NodeManager";
 import { Character } from "CONTACT ONE/shared/characters/Character";
 import { Formations } from "CONTACT ONE/shared/characters/Formations";
 import { NetworkBehaviorVariableBinder } from "CONTACT ONE/shared/utilities/NetworkVariableBinder";
@@ -19,7 +21,7 @@ export abstract class Unit<P extends BaseElement<any>, C extends BaseElement<any
 	/**
 	 * A reference to the commander of this element.
 	 */
-	public readonly commander = new NetworkVariable(this, undefined as unknown as Character);
+	public readonly commander = new NetworkVariable<Character>(this, undefined !);
 
 	private readonly commanderBinder = new NetworkBehaviorVariableBinder(this as Unit<P, C>, this.commander, "onAssignedAsCommander", "onRemovedAsCommander");
 
@@ -28,12 +30,12 @@ export abstract class Unit<P extends BaseElement<any>, C extends BaseElement<any
 	/**
 	 * Profile describing sizing info about this unit.
 	 */
-	public readonly sizeProfile = new NetworkVariable<UnitProfiles.SizeProfile>(this, undefined as unknown as UnitProfiles.SizeProfile);
+	public readonly sizeProfile = new NetworkVariable<UnitProfiles.SizeProfile>(this, undefined !);
 
 	/**
 	 * Profile describing class info about this unit.
 	 */
-	public readonly classProfile = new NetworkVariable<UnitProfiles.ClassProfile>(this, undefined as unknown as UnitProfiles.ClassProfile);
+	public readonly classProfile = new NetworkVariable<UnitProfiles.ClassProfile>(this, undefined !);
 
 	/**
 	 * An array containing the Characters directly in this unit.
@@ -43,9 +45,9 @@ export abstract class Unit<P extends BaseElement<any>, C extends BaseElement<any
 	/**
 	 * The parent Element of this unit.
 	 */
-	public readonly parent = new NetworkVariable<P>(this, undefined as unknown as P);
+	public readonly parent = new NetworkVariable<P>(this, undefined !);
 
-	private readonly parentBinder = new NetworkBehaviorVariableBinder(this as Unit<P, C>, this.parent as unknown as NetworkVariable<BaseElement<any>>, "subordinateOnAdded", "subordinateOnRemoved");
+	private readonly parentBinder = new NetworkBehaviorVariableBinder<BaseElement<any>, Unit<P, C>>(this, this.parent as unknown as NetworkVariable<BaseElement<any>>, "subordinateOnAdded", "subordinateOnRemoved");
 
 	/**
 	 * Specifies what stack this Unit class belongs to.
@@ -119,6 +121,15 @@ export abstract class Unit<P extends BaseElement<any>, C extends BaseElement<any
 	public onStart(): void {
 		this.commanderBinder.start();
 		this.parentBinder.start();
+
+		task.defer(() => {
+			if (this.sizeProfile.getValue().acronym === "P") {
+				const maneuver = new ClearArea([this, ...this.getDescendants() as Unit<any, any>[]], NodeManager.graph.areas);
+	
+				maneuver.recalculateAssignments();
+				maneuver.apply();
+			}
+		});
 	}
 
 	public getMembersRecursive(): Character[] {

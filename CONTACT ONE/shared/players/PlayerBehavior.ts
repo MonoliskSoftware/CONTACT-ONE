@@ -23,15 +23,15 @@ import { PlayerState } from "./PlayerState";
  * The PlayerBehavior is the manager used to manage and interface with an individual Player's scripts and behaviors.
  */
 export class PlayerBehavior extends NetworkBehavior implements BaseController {
-	public readonly player = new NetworkVariable<Player>(this, undefined as unknown as Player);
+	public readonly player = new NetworkVariable<Player>(this, undefined!);
 	public readonly state = new NetworkVariable<PlayerState>(this, PlayerState.LOBBY);
-	public readonly faction = new NetworkVariable(this, undefined as unknown as Faction);
+	public readonly faction = new NetworkVariable<Faction>(this, undefined!);
 
 	private lastState: PlayerState = this.state.getValue();
 
 	// Stacks
 	private currentStackBehavior: StackBehavior = this.getGameObject().addComponent(FallbackStackBehavior);
-	private stackBehaviors = undefined as unknown as { [key in GameStack]: StackBehavior };
+	private stackBehaviors!: { [key in GameStack]: StackBehavior };
 
 	public readonly stack = new NetworkVariable<GameStack>(this, GameStack.NONE);
 	public readonly commandedUnitsChanged = new Signal<[]>(`${this.getId()}CommandChanged`);

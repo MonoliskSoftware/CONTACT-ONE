@@ -85,70 +85,42 @@ export class TripMovement extends Movement {
 
 				this.enabled = false;
 			} else {
-				{
-					const currentWaypointPosition = this.agent.currentWaypoint.Position;
-					const npcPosition = this.humanoid.RootPart!.Position;
-					const horizontalDelta = new Vector3(currentWaypointPosition.X - this.humanoid.RootPart!.Position.X, 0, currentWaypointPosition.Z - this.humanoid.RootPart!.Position.Z);
+				const currentWaypointPosition = this.agent.currentWaypoint.Position;
+				const npcPosition = this.humanoid.RootPart!.Position;
+				const horizontalDelta = new Vector3(currentWaypointPosition.X - this.humanoid.RootPart!.Position.X, 0, currentWaypointPosition.Z - this.humanoid.RootPart!.Position.Z);
 
-					const shouldNotSeek = horizontalDelta.Magnitude < Pathfinding.MINIMUM_DISTANCE_FOR_SEEK;
-					const hasReachedWaypoint = horizontalDelta.Magnitude < Pathfinding.MINIMUM_TARGET_REACHED_DISTANCE;
+				const shouldNotSeek = horizontalDelta.Magnitude < Pathfinding.MINIMUM_DISTANCE_FOR_SEEK;
+				const hasReachedWaypoint = horizontalDelta.Magnitude < Pathfinding.MINIMUM_TARGET_REACHED_DISTANCE;
 
-					if (shouldNotSeek || hasReachedWaypoint) {
-						if (shouldNotSeek) this.humanoid.MoveTo(currentWaypointPosition);
-						if (hasReachedWaypoint) this.agent.reachedWaypoint.fire();
+				if (shouldNotSeek || hasReachedWaypoint) {
+					if (shouldNotSeek) this.humanoid.MoveTo(currentWaypointPosition);
+					if (hasReachedWaypoint) this.agent.reachedWaypoint.fire();
 
-						return;
-					}
-
-					// Compute desired velocity
-					let desiredVelocity = currentWaypointPosition.sub(npcPosition);
-					// if (desiredVelocity.Magnitude < 1) {
-					// 	// Stop moving if close enough
-					// 	this.humanoid.Move(Vector3.zero);
-					// 	return;
-					// }
-					desiredVelocity = desiredVelocity.Unit.mul(this.humanoid.WalkSpeed);
-
-					// Approximate current velocity using humanoid's MoveDirection
-					const currentVelocity = this.humanoid.MoveDirection.mul(this.humanoid.WalkSpeed);
-
-					// Compute steering force
-					let steerVector = desiredVelocity.sub(currentVelocity);
-					const MAX_STEER = 16;
-
-					if (steerVector.Magnitude > MAX_STEER) {
-						steerVector = steerVector.Unit.mul(MAX_STEER);
-					}
-
-					// Apply as acceleration instead of direct movement
-					this.humanoid.Move(currentVelocity.add(steerVector).Unit);
-
-					if (horizontalDelta.Magnitude < Pathfinding.MINIMUM_TARGET_REACHED_DISTANCE) this.agent.reachedWaypoint.fire();
-
-					this.waypointPart[0].Position = currentWaypointPosition;
+					return;
 				}
 
-				// const currentWaypointPosition = this.agent.currentWaypoint.Position;
-				// let desiredVelocity = currentWaypointPosition.sub(this.humanoid.RootPart!.Position);
-				// desiredVelocity = desiredVelocity.Unit;
-				// desiredVelocity = desiredVelocity.mul(this.humanoid.WalkSpeed);
-				// let steerVector = desiredVelocity.sub(this.humanoid.MoveDirection.mul(this.humanoid.WalkSpeed));
+				// Compute desired velocity
+				let desiredVelocity = currentWaypointPosition.sub(npcPosition);
 
-				// const MAX_STEER = 16;
+				desiredVelocity = desiredVelocity.Unit.mul(this.humanoid.WalkSpeed);
 
-				// if (steerVector.Magnitude > MAX_STEER) steerVector = steerVector.Unit.mul(MAX_STEER);
+				// Approximate current velocity using humanoid's MoveDirection
+				const currentVelocity = this.humanoid.MoveDirection.mul(this.humanoid.WalkSpeed);
 
-				// // print(direction.Magnitude);
+				// Compute steering force
+				let steerVector = desiredVelocity.sub(currentVelocity);
+				const MAX_STEER = 16;
 
+				if (steerVector.Magnitude > MAX_STEER) {
+					steerVector = steerVector.Unit.mul(MAX_STEER);
+				}
 
-				// // const distance = difference.Magnitude;
-				// // const direction = difference.Unit;
+				// Apply as acceleration instead of direct movement
+				this.humanoid.Move(currentVelocity.add(steerVector).Unit);
 
-				// // if (distance < Pathfinding.MINIMUM_DISTANCE_FOR_SEEK) {
-				// // 	this.humanoid.MoveTo(currentWaypointPosition);
-				// // } else {
-				// this.humanoid.Move(steerVector.div(this.humanoid.WalkSpeed));
-				// // }
+				if (horizontalDelta.Magnitude < Pathfinding.MINIMUM_TARGET_REACHED_DISTANCE) this.agent.reachedWaypoint.fire();
+
+				this.waypointPart[0].Position = currentWaypointPosition;
 			}
 		} else {
 			this.enabled = false;
@@ -161,8 +133,8 @@ export class TripMovement extends Movement {
 	onActivatedChanged(activated: boolean): void {
 		if (activated) {
 			if (this.agent.currentTrip !== this.trip) this.agent.setCurrentTrip(this.trip);
-		} else 
-		if (this.agent.currentTrip === this.trip) this.agent.setCurrentTrip(undefined);
+		} else
+			if (this.agent.currentTrip === this.trip) this.agent.setCurrentTrip(undefined);
 
 
 		this.goalPart[0].Transparency = !activated ? 1 : 0;
@@ -179,6 +151,22 @@ export class TripMovement extends Movement {
 		this.originPart[0].Destroy();
 
 		this.trip.dispose();
+	}
+
+	async waitToFinish(): Promise<void> {
+		if (this.trip.finished) return;
+
+		return new Promise(resolve => this.agent.didCompletePath.connect(path => {
+			if (path === this.trip) resolve();
+		}));
+	}
+}
+
+export class WrappedTripMovement extends TripMovement {
+	constructor(controller: AIBattleController, name: string, agent: Pathfinding.Agent, goal: Vector3) {
+		const trip = agent.createTrip(goal);
+		
+		super(controller, name, trip);
 	}
 }
 

@@ -3,7 +3,7 @@ import { NetworkBehavior } from "../Scripts/Networking/NetworkBehavior";
 import { SpawnManager } from "../Scripts/Networking/SpawnManager";
 
 export class SpawnLocation extends NetworkBehavior {
-	public readonly factionTag: string = undefined as unknown as string;
+	public readonly factionTag!: string;
 
 	public onStart(): void {
 

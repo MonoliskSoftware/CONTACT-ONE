@@ -17,7 +17,7 @@ export interface StackComponentProps<T extends StackBehavior> {
  * StackBehaviors are used to defined local behaviors for Stacks.
  */
 export abstract class StackBehavior extends NetworkBehavior {
-	public readonly playerBehavior = new NetworkVariable<PlayerBehavior>(this, undefined as unknown as PlayerBehavior);
+	public readonly playerBehavior = new NetworkVariable<PlayerBehavior>(this, undefined!);
 
 	public readonly state = new NetworkVariable<StackBehaviorState>(this, StackBehaviorState.INITIALIZING);
 

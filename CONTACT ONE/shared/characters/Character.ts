@@ -2,6 +2,7 @@
 import { RunService } from "@rbxts/services";
 import { AIBattleController } from "../ai/battlethink/AIBattleController";
 import { CharacterController } from "../controllers/CharacterController";
+import { SpawnLocation } from "../entities/SpawnLocation";
 import { Inventory } from "../inventory/Inventory";
 import { InventoryDescriptions } from "../inventory/InventoryDescriptions";
 import { ToolInterface } from "../inventory/tools/ToolInterface";
@@ -82,8 +83,8 @@ export class Character extends NetworkBehavior {
 			// needs refinement
 			this.initializeRig();
 
-			// this.rig.getValue().PivotTo(SpawnLocation.getSpawnLocationOfFaction((this.unit.getValue() as CommandUnit | BattleUnit).getFaction()?.name.getValue() ?? "")?.getGameObject().getInstance().GetPivot() ?? CFrame.identity);
-			this.rig.getValue().PivotTo(new CFrame((math.random() * 2 - 1) * 1024, 0, (math.random() * 2 - 1) * 1024));
+			this.rig.getValue().PivotTo(SpawnLocation.getSpawnLocationOfFaction((this.unit.getValue() as CommandUnit | BattleUnit).getFaction()?.name.getValue() ?? "")?.getGameObject().getInstance().GetPivot() ?? CFrame.identity);
+			// this.rig.getValue().PivotTo(new CFrame((math.random() * 2 - 1) * 1024, 0, (math.random() * 2 - 1) * 1024));
 
 			task.delay(1, () => {
 				// NEEDS BETTER IMPLEMENTATION
