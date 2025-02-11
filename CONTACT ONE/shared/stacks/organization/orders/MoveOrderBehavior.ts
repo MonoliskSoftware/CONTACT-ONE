@@ -8,8 +8,8 @@ import { MoveOrder } from "./MoveOrder";
 const MOVE_ORDER_PRIORITY = 50;
 
 export class MoveOrderBehavior extends OrderBehavior<MoveOrder> {
-	private movement: TripMovement = undefined as unknown as TripMovement;
-	private trip: Pathfinding.AgentPath = undefined as unknown as Pathfinding.AgentPath;
+	private movement: TripMovement = undefined!;
+	private trip: Pathfinding.AgentPath = undefined!;
 	private isCommanderChangedConnection: Connection<any> | undefined;
 
 	protected getSourceScript(): ModuleScript {

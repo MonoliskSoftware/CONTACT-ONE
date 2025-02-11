@@ -58,8 +58,8 @@ export abstract class Movement {
 }
 
 export class TripMovement extends Movement {
-	public readonly trip: Pathfinding.AgentPath;
-	private readonly agent: Pathfinding.Agent;
+	public trip: Pathfinding.AgentPath;
+	protected readonly agent: Pathfinding.Agent;
 
 	protected goalPart: [Part, Beam];
 	protected waypointPart: [Part, Beam];
@@ -212,6 +212,37 @@ export class MoveToPartMovement extends Movement {
 	willDispose(): void {
 
 	}
+}
+
+export class FormationTripMovement extends TripMovement {
+    private lastTargetPosition?: Vector3;
+    private static readonly RECALCULATION_THRESHOLD = 5; // Only recalculate path if formation position moved by 5 studs
+
+    constructor(controller: AIBattleController, name: string, agent: Pathfinding.Agent, initialTarget: Vector3) {
+        const trip = agent.createTrip(initialTarget);
+        super(controller, name, trip);
+        this.lastTargetPosition = initialTarget;
+    }
+
+    public updateTargetPosition(newTarget: Vector3) {
+        if (!this.lastTargetPosition || newTarget.sub(this.lastTargetPosition).Magnitude > FormationTripMovement.RECALCULATION_THRESHOLD) {
+            // Create new trip to updated target
+            const newTrip = this.agent.createTrip(newTarget);
+            this.trip.dispose();
+            
+            this.trip = newTrip;
+            this.lastTargetPosition = newTarget;
+
+            if (this.enabled) {
+                this.agent.setCurrentTrip(newTrip);
+            }
+        }
+    }
+
+    public override willDispose(): void {
+        super.willDispose();
+        this.lastTargetPosition = undefined;
+    }
 }
 
 export class DefaultMovement extends Movement {

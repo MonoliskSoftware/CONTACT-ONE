@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { RunService } from "@rbxts/services";
+import { PathfindingService, RunService } from "@rbxts/services";
 import { Character, Rig } from "CONTACT ONE/shared/characters/Character";
 import { Formations } from "CONTACT ONE/shared/characters/Formations";
 import { CharacterController } from "CONTACT ONE/shared/controllers/CharacterController";
@@ -10,8 +10,10 @@ import { BaseOrder } from "CONTACT ONE/shared/stacks/organization/orders/BaseOrd
 import { Constructable } from "CORP/shared/Libraries/Utilities";
 import { SpawnManager } from "CORP/shared/Scripts/Networking/SpawnManager";
 import { Pathfinding } from "../pathfinding/Pathfinding";
-import { DefaultMovement, Movement, MoveToPositionMovement, TripMovement } from "./Movements";
+import { PATHFINDING_DEFAULT_PARAMETERS } from "../pathfinding/Pathfinding3";
+import { DefaultMovement, FormationTripMovement, Movement, MoveToPositionMovement, TripMovement } from "./Movements";
 import { OrderBehavior } from "./OrderBehavior";
+import { Path3Test } from "./Path3Test";
 
 const DEFAULT_BEHAVIOR_PRIORITY = -100;
 const MIN_PHYSICAL_ATTACK_DISTANCE = 5;
@@ -44,7 +46,7 @@ export class AIBattleController extends CharacterController {
 	private targetAttackMovement: MoveToPositionMovement | undefined;
 
 	// Formations
-	private formationMovement: MoveToPositionMovement | undefined;
+	private formationMovement: FormationTripMovement | undefined;
 
 	// Order management
 	private currentOrder: BaseOrder<any, any> | undefined;
@@ -122,31 +124,40 @@ export class AIBattleController extends CharacterController {
 		return currentMovement;
 	}
 
+	// private trackMovement: WrappedTripMovement
+	private path3Test!: Path3Test;
+	private path: Path = PathfindingService.CreatePath(PATHFINDING_DEFAULT_PARAMETERS);
+
 	private update(deltaTime: number) {
-		if (!UPDATE_INTERVAL_ENABLED || tick() - this.lastUpdate > UPDATE_INTERVAL) {
-			this.lastUpdate = tick();
+		this.path3Test.update(deltaTime);
+		// const targetPosition = (Workspace.FindFirstChild("Target") as BasePart).Position;
 
-			deltaTime = UPDATE_INTERVAL_ENABLED ? UPDATE_INTERVAL : deltaTime;
+		// this.humanoid.MoveTo(Vector3.zero);
 
-			this.updateAttack();
+		// if (!UPDATE_INTERVAL_ENABLED || tick() - this.lastUpdate > UPDATE_INTERVAL) {
+		// 	this.lastUpdate = tick();
 
-			if (this.shouldScanForTargets()) this.scanForTargets();
-			if (this.shouldTryGetNewTarget() && this.unit.knownTargets.getValue().size() > 0) {
-				const target = this.unit.requestTarget();
+		// 	deltaTime = UPDATE_INTERVAL_ENABLED ? UPDATE_INTERVAL : deltaTime;
 
-				print("Target acquired!");
+		// 	this.updateAttack();
 
-				if (target) this.characterReference.assignedTarget.setValue(target);
-			}
+		// 	if (this.shouldScanForTargets()) this.scanForTargets();
+		// 	if (this.shouldTryGetNewTarget() && this.unit.knownTargets.getValue().size() > 0) {
+		// 		const target = this.unit.requestTarget();
 
-			this.updateMovementIntoFormation();
+		// 		print("Target acquired!");
 
-			const currentMovement = this.updateCurrentMovement();
+		// 		if (target) this.characterReference.assignedTarget.setValue(target);
+		// 	}
 
-			if (currentMovement) currentMovement.update(deltaTime);
+		// 	this.updateMovementIntoFormation();
 
-			this.movementNameValue!.Value = currentMovement ? tostring(getmetatable(currentMovement)) : "none";
-		}
+		// 	const currentMovement = this.updateCurrentMovement();
+
+		// 	if (currentMovement) currentMovement.update(deltaTime);
+
+		// 	this.movementNameValue!.Value = currentMovement ? tostring(getmetatable(currentMovement)) : "none";
+		// }
 	}
 
 	private updateStrike(distanceToTarget: number) {
@@ -202,7 +213,7 @@ export class AIBattleController extends CharacterController {
 	private updateMovementIntoFormation() {
 		const shouldMoveIntoFormation = !this.characterReference.isCommander() && this.shouldMaintainFormation();
 
-		if (this.formationMovement) {
+		if (this.formationMovement !== undefined) {
 			if (shouldMoveIntoFormation) {
 				const unit = this.unit;
 				const index = unit.directMembers.indexOf(this.characterReference);
@@ -211,7 +222,8 @@ export class AIBattleController extends CharacterController {
 
 				const final = Formations.FormationComputers[unit.formation.getValue()](index);
 
-				this.formationMovement.target = commanderOrigin.mul(new CFrame(final.X * 8, 0, final.Y * 8)).Position;
+				const targetPos = commanderOrigin.mul(new CFrame(final.X * 8, 0, final.Y * 8)).Position;
+				this.formationMovement.updateTargetPosition(targetPos);
 			}
 
 			this.formationMovement.enabled = shouldMoveIntoFormation;
@@ -285,12 +297,23 @@ export class AIBattleController extends CharacterController {
 
 			this.heartbeatConnection = RunService.Heartbeat.Connect(delta => this.update(delta));
 
-			this.formationMovement = this.addMovement(new MoveToPositionMovement(this, "FormationAssumptionMovement", Vector3.zero), FORMATION_BEHAVIOR_PRIORITY);
+			// Initialize with a dummy position - it will be updated in updateMovementIntoFormation
+			this.formationMovement = this.addMovement(
+				new FormationTripMovement(
+					this,
+					"FormationAssumptionMovement",
+					this.pathfindingAgent,
+					Vector3.zero
+				),
+				FORMATION_BEHAVIOR_PRIORITY
+			);
 			this.targetAttackMovement = this.addMovement(new MoveToPositionMovement(this, "AttackStrikeMovement", Vector3.zero), ATTACK_BEHAVIOR_PRIORITY);
 
 			this.addMovement(new DefaultMovement(this, "Default"), DEFAULT_BEHAVIOR_PRIORITY);
 
 			this.movementNameValue = new Instance("StringValue", this.rig.Parent?.Parent);
+
+			this.path3Test = new Path3Test(this.humanoid);
 		}
 	}
 
