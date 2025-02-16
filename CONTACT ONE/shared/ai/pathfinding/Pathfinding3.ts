@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import Object from "@rbxts/object-utils";
 import { PathfindingService, Workspace } from "@rbxts/services";
 import { Signal } from "CORP/shared/Libraries/Signal";
 
@@ -82,7 +81,13 @@ class Visualization {
 	}
 }
 
-export namespace Pathfinding3 {
+const ALLOW_RECALCULATION_PAST_NEXT_NODE = false;
+
+export namespace CharacterPathfinding {
+	export const MIN_DISTANCE_FROM_GOAL_FOR_RECALCULATION = 10;
+	export const MIN_DISTANCE_FROM_GOAL_FOR_PATHFINDING = 20;
+	export const MINIMUM_TARGET_REACHED_DISTANCE = 0.5;
+
 	export interface AgentPath {
 		waypoints: PathWaypoint[]
 	}
@@ -105,6 +110,36 @@ export namespace Pathfinding3 {
 
 		constructor(humanoid: Humanoid) {
 			this.humanoid = humanoid;
+		}
+
+		private static readonly REDUNDANCY_THRESHOLD = 5;
+
+		private static backtrackRedundantNodes(waypoints1: PathWaypoint[], waypoints2: PathWaypoint[]): PathWaypoint[] {
+			if (waypoints1.size() === 0 || waypoints2.size() === 0) {
+				return [...waypoints1, ...waypoints2];
+			}
+
+			let cutoffIndex = waypoints1.size() - 1;
+
+			// Compare corresponding waypoints from end of waypoints1 and start of waypoints2
+			for (let n = 0; n < math.min(waypoints1.size(), waypoints2.size()); n++) {
+				const wp1Index = waypoints1.size() - 1 - n;
+				const wp2Index = n;
+
+				const distance = waypoints1[wp1Index].Position.sub(waypoints2[wp2Index].Position).Magnitude;
+
+				if (distance > this.REDUNDANCY_THRESHOLD) {
+					cutoffIndex = wp1Index;
+					break;
+				}
+			}
+
+			const numWaypointsKept = waypoints1.size() - cutoffIndex - 1;
+
+			const filteredWaypoints1 = waypoints1.filter((_, i) => i <= cutoffIndex);
+			const filteredWaypoints2 = waypoints2.filter((_, i) => i >= numWaypointsKept);
+
+			return [...filteredWaypoints1, ...filteredWaypoints2];
 		}
 
 		public getDefaultOrigin(): Vector3 {
@@ -185,33 +220,27 @@ export namespace Pathfinding3 {
 			return this.currentPath && this.waypointIndex === this.currentPath.waypoints.size();
 		}
 
+		private getNodesForRecalculation(waypoints: Vector3[]): Vector3[] {
+			return [this.getDefaultOrigin(), ...waypoints.filter((_, i) => ALLOW_RECALCULATION_PAST_NEXT_NODE ? i === this.waypointIndex - 1 : i >= this.waypointIndex - 1)];
+		}
+
 		public async appendPath(goal: Vector3, existingPath: AgentPath): Promise<[PathComputationOutput, number]> {
 			const origin = this.getDefaultOrigin();
-			const newStartIndex = findBestRecalculationNode(origin, existingPath.waypoints.map(wp => wp.Position), goal);
+			const newStartIndex = findBestRecalculationNode(origin, this.getNodesForRecalculation(existingPath.waypoints.map(wp => wp.Position)), goal);
 
 			if (newStartIndex === undefined) {
 				return [await Agent.wrapComputation(this.computePath(goal, origin)), 1];
 			}
 
-			const existingWaypoints = existingPath.waypoints.filter((_, i) => i < newStartIndex && i >= this.waypointIndex);
+			const existingWaypoints = existingPath.waypoints.filter((_, i) => i < newStartIndex && i >= this.waypointIndex - 1);
 
 			try {
 				const waypoints = await this.computePath(goal, existingWaypoints[existingWaypoints.size() - 1]?.Position ?? origin);
 
-				return [Agent.createSuccessfulComputation([...existingWaypoints, ...waypoints]), newStartIndex];
+				return [Agent.createSuccessfulComputation(Agent.backtrackRedundantNodes(existingWaypoints, waypoints)), newStartIndex];
 			} catch (status: any) {
 				return [Agent.createFailedComputation(status as Enum.PathStatus), newStartIndex];
 			}
-		}
-
-		private computeWithTempPath(goal: Vector3, origin: Vector3, override: AgentParameters): Promise<PathWaypoint[]> {
-			const path = PathfindingService.CreatePath(Object.assign(table.clone(PATHFINDING_DEFAULT_PARAMETERS), override));
-
-			const output = this.computePath(goal, origin, path);
-
-			path.Destroy();
-			
-			return output;
 		}
 
 		private computePath(goal: Vector3, origin: Vector3, path = this.path): Promise<PathWaypoint[]> {
@@ -250,8 +279,8 @@ export namespace Pathfinding3 {
 			return this.computationPromise !== undefined;
 		}
 
-		private onWaypointBlocked(index: number) {
-			
+		public teardown() {
+			this.path.Destroy();
 		}
 	}
 

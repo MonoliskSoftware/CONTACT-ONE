@@ -1,15 +1,14 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { TripMovement } from "CONTACT ONE/shared/ai/battlethink/Movements";
+import { createMovement, Movement } from "CONTACT ONE/shared/ai/battlethink/AIBattleController";
 import { OrderBehavior } from "CONTACT ONE/shared/ai/battlethink/OrderBehavior";
-import { Pathfinding } from "CONTACT ONE/shared/ai/pathfinding/Pathfinding";
+import { GoalType } from "CONTACT ONE/shared/ai/battlethink/Pathfinder3";
 import { Connection } from "CORP/shared/Libraries/Signal";
 import { MoveOrder } from "./MoveOrder";
 
 const MOVE_ORDER_PRIORITY = 50;
 
 export class MoveOrderBehavior extends OrderBehavior<MoveOrder> {
-	private movement: TripMovement = undefined!;
-	private trip: Pathfinding.AgentPath = undefined!;
+	private movement!: Movement;
 	private isCommanderChangedConnection: Connection<any> | undefined;
 
 	protected getSourceScript(): ModuleScript {
@@ -17,11 +16,13 @@ export class MoveOrderBehavior extends OrderBehavior<MoveOrder> {
 	}
 
 	public onStart(): void {
-		this.trip = this.controller.pathfindingAgent.createTrip(this.order.executionParameters.getValue().position);
-		this.movement = new TripMovement(this.controller, "MoveOrderTrip", this.trip);
-		this.movement.enabled = false;
+		this.movement = createMovement({
+			position: this.getParameters().position,
+			type: GoalType.PATHFIND_TO
+		}, false);
 
 		this.controller.addMovement(this.movement, MOVE_ORDER_PRIORITY);
+		this.controller.yieldUntilMovementCompleted(this.movement).then(() => this.controller.removeMovement(this.movement));
 
 		this.isCommanderChangedConnection = this.character.onIsCommanderChanged.connect(isCommander => this.update(isCommander));
 		this.update();
@@ -29,7 +30,6 @@ export class MoveOrderBehavior extends OrderBehavior<MoveOrder> {
 
 	public willRemove(): void {
 		this.isCommanderChangedConnection?.disconnect();
-		this.trip.dispose();
 		this.controller.removeMovement(this.movement);
 	}
 
@@ -38,11 +38,6 @@ export class MoveOrderBehavior extends OrderBehavior<MoveOrder> {
 	}
 
 	public update(isCommander = this.character.isCommander()) {
-		if (isCommander) {
-			this.movement.trip.recalculate();
-			this.movement.enabled = true;
-		} else {
-			this.movement.enabled = false;
-		}
+		this.movement.enabled = isCommander;
 	}
 }

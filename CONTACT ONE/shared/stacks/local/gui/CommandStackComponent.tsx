@@ -96,9 +96,9 @@ const CommandUnitSelector: React.FC<{
 };
 
 const OrderSelector: React.FC<{
-	orders: BaseOrder<any, any>[],
-	selectedOrders: BaseOrder<any, any>[],
-	setSelectedOrders: (orders: BaseOrder<any, any>[]) => void
+	orders: BaseOrder<any>[],
+	selectedOrders: BaseOrder<any>[],
+	setSelectedOrders: (orders: BaseOrder<any>[]) => void
 }> = ({ selectedOrders, orders, setSelectedOrders }) => {
 	return (
 		<frame
@@ -263,7 +263,7 @@ const OrderPropertyEditor: React.FC<{
 };
 
 const OrderPropertiesEditor: React.FC<{
-	order: BaseOrder<any, any>
+	order: BaseOrder<any>
 }> = ({ order }) => {
 	return (
 		<StyleFrame
@@ -281,7 +281,7 @@ const OrderPropertiesEditor: React.FC<{
 
 						newParams[key] = newValue;
 
-						order.trySetParameters(newParams);
+						// order.trySetParameters(newParams);
 					}} />;
 				})
 			}
@@ -296,18 +296,18 @@ const OrderPropertiesEditor: React.FC<{
 
 const OrderEditor: React.FC<{
 	rootUnit: Unit<any, Unit<any, any>>,
-	orders: BaseOrder<any, any>[],
-	setOrders: (state: SetStateAction<BaseOrder<any, any>[]>) => void
+	orders: BaseOrder<any>[],
+	setOrders: (state: SetStateAction<BaseOrder<any>[]>) => void
 }> = ({ rootUnit, orders, setOrders }) => {
-	const [selection, setSelection] = useState<Unit<any, any>[]>(orders.size() === 1 ? orders[0].getAssignedUnits() : []);
+	const [selection, setSelection] = useState<Unit<any, any>[]>(/*orders.size() === 1 ? orders[0].getAssignedActors() : */[]);
 
 	useEffect(() => {
 		if (orders.size() === 1) {
-			const conn = orders[0].assignedUnitIds.onValueChanged.connect(() => setSelection(orders.size() === 1 ? orders[0].getAssignedUnits() : []));
+			// const conn = orders[0].assignedUnitIds.onValueChanged.connect(() => setSelection(/*orders.size() === 1 ? orders[0].getAssignedActors() : */[]));
 
-			setSelection(orders[0].getAssignedUnits());
+			// setSelection(orders[0].getAssignedActors());
 
-			return () => conn.disconnect();
+			// return () => conn.disconnect();
 		}
 	}, [orders]);
 
@@ -325,7 +325,7 @@ const OrderEditor: React.FC<{
 					rootUnit={rootUnit}
 					selection={selection}
 					setSelection={(newSelection: Unit<any, any>[]) => {
-						orders[0].trySetAssignedUnits(newSelection.map(unit => unit.getId()));
+						// orders[0].trySetAssignedUnits(newSelection.map(unit => unit.getId()));
 					}}
 				/>
 			</> : <></>
@@ -333,7 +333,7 @@ const OrderEditor: React.FC<{
 		{
 			rootUnit && orders.size() > 0 ? <StyleButton
 				Event={{
-					Activated: () => orders.forEach(order => order.tryExecute())
+					// Activated: () => orders.forEach(order => order.tryExecute())
 				}}
 			>
 				<StyleTextLabel
@@ -359,10 +359,10 @@ const OrderCreator: React.FC<{
 	rootUnits: CommandUnit[],
 	commandUnit: CommandUnit | undefined,
 	setCommandUnit: (unit: CommandUnit | undefined) => void,
-	orders: BaseOrder<any, any>[],
-	setOrders: (state: SetStateAction<BaseOrder<any, any>[]>) => void
+	orders: BaseOrder<any>[],
+	setOrders: (state: SetStateAction<BaseOrder<any>[]>) => void
 }> = ({ orders, commandUnit, setCommandUnit, rootUnits, setOrders }) => {
-	const [availableOrders, setAvailableOrders] = useState<Constructable<BaseOrder<any, any>>[]>(ALL_ORDERS);
+	const [availableOrders, setAvailableOrders] = useState<Constructable<BaseOrder<any>>[]>(ALL_ORDERS);
 
 	return <frame
 		AutomaticSize={Enum.AutomaticSize.XY}
@@ -391,7 +391,7 @@ const OrderCreator: React.FC<{
 					{...(commandUnit === undefined ? ButtonDisabledProps : {})}
 				>
 					<StyleTextLabel
-						Text={(availableOrder as unknown as BaseOrder<any, any>).getConfig().name.upper()}
+						Text={(availableOrder as unknown as BaseOrder<any>).getConfig().name.upper()}
 						FontFace={Font.fromName("Roboto", Enum.FontWeight.Bold)}
 						TextSize={32}
 					/>
@@ -408,11 +408,11 @@ const OrderCreator: React.FC<{
 			selection={commandUnit}
 			setSelection={setCommandUnit}
 		/>
-		{commandUnit ? <OrderSelector
+		{/* {commandUnit ? <OrderSelector
 			orders={commandUnit.associatedOrders}
 			setSelectedOrders={setOrders}
 			selectedOrders={orders}
-		/> : <></>}
+		/> : <></>} */}
 		<uilistlayout
 			FillDirection={Enum.FillDirection.Vertical}
 			Padding={new UDim(0, 16)}
@@ -443,7 +443,7 @@ export const CommandStackComponent: React.FC<StackComponentProps<CommandStackBeh
 	assert(guiManagerContext);
 
 	const [controlledUnits, setControlledUnits] = useState<CommandUnit[]>(guiManagerContext.playerBehavior.commandedUnits);
-	const [selectedOrders, setSelectedOrders] = useState<BaseOrder<any, any>[]>([]);
+	const [selectedOrders, setSelectedOrders] = useState<BaseOrder<any>[]>([]);
 	const [commandUnit, setCommandUnit] = useState<CommandUnit | undefined>();
 	const [behaviorState, setBehaviorState] = useState(props.behavior.state.getValue());
 

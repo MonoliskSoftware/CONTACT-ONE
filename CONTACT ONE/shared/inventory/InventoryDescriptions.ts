@@ -1,5 +1,5 @@
 import { SceneSerialization } from "../Scripts/Serialization/SceneSerialization";
-import { NestedArray } from "../stacks/organization/templating/UnitTemplates";
+import { NestedArray } from "../util/NestedArray";
 import { Item } from "./Item";
 
 export namespace InventoryDescriptions {

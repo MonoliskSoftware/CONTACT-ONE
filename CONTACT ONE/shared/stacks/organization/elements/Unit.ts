@@ -1,17 +1,18 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { RunService } from "@rbxts/services";
-import { ClearArea } from "CONTACT ONE/shared/ai/battlethink/manuevers/ClearArea";
-import { NodeManager } from "CONTACT ONE/shared/ai/battlethink/nodes/NodeManager";
+import { RunService, Workspace } from "@rbxts/services";
+import { AIBattleController, createMovement } from "CONTACT ONE/shared/ai/battlethink/AIBattleController";
+import { GoalType } from "CONTACT ONE/shared/ai/battlethink/Pathfinder3";
 import { Character } from "CONTACT ONE/shared/characters/Character";
 import { Formations } from "CONTACT ONE/shared/characters/Formations";
 import { NetworkBehaviorVariableBinder } from "CONTACT ONE/shared/utilities/NetworkVariableBinder";
 import { Connection } from "CORP/shared/Libraries/Signal";
-import { ServerSideOnly } from "CORP/shared/Libraries/Utilities";
+import { dict, ServerSideOnly } from "CORP/shared/Libraries/Utilities";
 import { NetworkList } from "CORP/shared/Scripts/Networking/NetworkList";
 import { NetworkVariable } from "CORP/shared/Scripts/Networking/NetworkVariable";
 import { GameStack } from "../../StackManager";
-import { UnitProfiles } from "../UnitProfiles";
+import { UnitProfiles } from "../templating/UnitProfiles";
 import { BaseElement } from "./BaseElement";
+import { Faction } from "./Faction";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type GenericUnit = Unit<BaseElement<any>, BaseElement<any>>;
@@ -21,7 +22,7 @@ export abstract class Unit<P extends BaseElement<any>, C extends BaseElement<any
 	/**
 	 * A reference to the commander of this element.
 	 */
-	public readonly commander = new NetworkVariable<Character>(this, undefined !);
+	public readonly commander = new NetworkVariable<Character>(this, undefined!);
 
 	private readonly commanderBinder = new NetworkBehaviorVariableBinder(this as Unit<P, C>, this.commander, "onAssignedAsCommander", "onRemovedAsCommander");
 
@@ -30,12 +31,12 @@ export abstract class Unit<P extends BaseElement<any>, C extends BaseElement<any
 	/**
 	 * Profile describing sizing info about this unit.
 	 */
-	public readonly sizeProfile = new NetworkVariable<UnitProfiles.SizeProfile>(this, undefined !);
+	public readonly sizeProfile = new NetworkVariable<UnitProfiles.SizeProfile>(this, undefined!);
 
 	/**
 	 * Profile describing class info about this unit.
 	 */
-	public readonly classProfile = new NetworkVariable<UnitProfiles.ClassProfile>(this, undefined !);
+	public readonly classProfile = new NetworkVariable<UnitProfiles.ClassProfile>(this, undefined!);
 
 	/**
 	 * An array containing the Characters directly in this unit.
@@ -45,7 +46,7 @@ export abstract class Unit<P extends BaseElement<any>, C extends BaseElement<any
 	/**
 	 * The parent Element of this unit.
 	 */
-	public readonly parent = new NetworkVariable<P>(this, undefined !);
+	public readonly parent = new NetworkVariable<P>(this, undefined!);
 
 	private readonly parentBinder = new NetworkBehaviorVariableBinder<BaseElement<any>, Unit<P, C>>(this, this.parent as unknown as NetworkVariable<BaseElement<any>>, "subordinateOnAdded", "subordinateOnRemoved");
 
@@ -54,7 +55,7 @@ export abstract class Unit<P extends BaseElement<any>, C extends BaseElement<any
 	 */
 	public abstract readonly stack: GameStack;
 
-	public readonly knownTargets = new NetworkList<Character>(this, []);
+	public readonly knownTargets = new NetworkList<Character>(this);
 
 	private targetDiedConnections: Connection<[]>[] = [];
 
@@ -65,6 +66,8 @@ export abstract class Unit<P extends BaseElement<any>, C extends BaseElement<any
 	public getDescendants(): (C | Unit<any, any>)[] {
 		return this.subordinates.reduce((descendants, child) => [...descendants, ...(child instanceof Unit ? child.getDescendants() : [])], [...this.subordinates]);
 	}
+
+	public abstract getFaction(): Faction;
 
 	public memberOnAdded(member: Character) {
 		if (!this.directMembers.includes(member)) {
@@ -123,11 +126,18 @@ export abstract class Unit<P extends BaseElement<any>, C extends BaseElement<any
 		this.parentBinder.start();
 
 		task.defer(() => {
-			if (this.sizeProfile.getValue().acronym === "P") {
-				const maneuver = new ClearArea([this, ...this.getDescendants() as Unit<any, any>[]], NodeManager.graph.areas);
-	
-				maneuver.recalculateAssignments();
-				maneuver.apply();
+			if (this.sizeProfile.getValue().acronym === "S") {
+				const com = this.commander.getValue();
+
+				const move = createMovement({
+					position: ((Workspace as dict).Target as Part).Position,
+					type: GoalType.PATHFIND_TO
+				});
+
+				const con = com.getController() as AIBattleController;
+
+				con.addMovement(move, 1000);
+				con.yieldUntilMovementCompleted(move).then(() => con.removeMovement(move));
 			}
 		});
 	}

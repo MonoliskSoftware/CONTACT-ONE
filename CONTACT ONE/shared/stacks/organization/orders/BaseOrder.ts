@@ -1,15 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { OrderBehavior } from "CONTACT ONE/shared/ai/battlethink/OrderBehavior";
-import { PlayerManager } from "CONTACT ONE/shared/players/PlayerManager";
-import { NetworkBehaviorVariableBinder } from "CONTACT ONE/shared/utilities/NetworkVariableBinder";
-import { Constructable, dict, ServerSideOnly } from "CORP/shared/Libraries/Utilities";
+import { Character } from "CONTACT ONE/shared/characters/Character";
+import { Constructable, dict } from "CORP/shared/Libraries/Utilities";
 import { GameObject } from "CORP/shared/Scripts/Componentization/GameObject";
 import { NetworkBehavior } from "CORP/shared/Scripts/Networking/NetworkBehavior";
+import { NetworkList } from "CORP/shared/Scripts/Networking/NetworkList";
 import { NetworkVariable } from "CORP/shared/Scripts/Networking/NetworkVariable";
-import { RPC } from "CORP/shared/Scripts/Networking/RPC";
-import { SpawnManager } from "CORP/shared/Scripts/Networking/SpawnManager";
-import { CommandUnit } from "../elements/CommandUnit";
-import { Unit } from "../elements/Unit";
 
 type OptionalKeys<T> = {
 	[K in keyof T]: object extends Pick<T, K> ? K : never;
@@ -35,12 +31,17 @@ export const DefaultConfiguration: Required<OptionalProperties<OrderConfiguratio
 	maxUnits: -1
 };
 
+export interface IElementActor extends NetworkBehavior {
+	onOrderAdded(order: BaseOrder<any>): void;
+	onOrderRemoving(order: BaseOrder<any>): void;
+}
+
 /**
  * Orders are used to define instructions for units. Order cans be given by players and by AI.
  */
-export abstract class BaseOrder<U extends Unit<any, any>, T extends dict> extends NetworkBehavior {
-	public readonly assignedUnitIds = new NetworkVariable<string[]>(this, []);
-	public readonly originUnit = new NetworkVariable(this, undefined as unknown as CommandUnit);
+export abstract class BaseOrder<T extends dict> extends NetworkBehavior {
+	public readonly assignedActors = new NetworkList<IElementActor>(this);
+	public readonly owner = new NetworkVariable<Character>(this, undefined!);
 
 	public abstract getConfig(): OrderConfiguration;
 
@@ -59,158 +60,171 @@ export abstract class BaseOrder<U extends Unit<any, any>, T extends dict> extend
 	 */
 	public readonly abstract orderBehavior: Constructable<OrderBehavior<any>>;
 
-	private readonly originUnitBinder = new NetworkBehaviorVariableBinder(this as BaseOrder<any, any>, this.originUnit, "onOrderAdded", "onOrderRemoving");
+	// private readonly originUnitBinder = new NetworkBehaviorVariableBinder(this as BaseOrder<any, any>, this.originActor, "onOrderAdded", "onOrderRemoving");
 
 	constructor(gameObject: GameObject) {
 		super(gameObject);
 	}
 
 	public onStart(): void {
-		this.originUnitBinder.start();
+		// this.owner
+		// this.originUnitBinder.start();
 	}
 
 	public willRemove(): void {
-		this.originUnitBinder.teardown();
+		// this.originUnitBinder.teardown();
 	}
 
+	// /**
+	//  * DOCS OUTDATED - ACTOR UPDATE
+	//  * 
+	//  * Assigns the supplied unit to this order.
+	//  * 
+	//  * @returns True if the unit was not assigned to this order and now is, else false.
+	//  */
+	// @ServerSideOnly
+	// public assignActor(unit: U): boolean {
+	// 	if (this.isActorAssigned(unit)) return false;
+
+	// 	this.assignedActors.push(unit);
+
+	// 	return true;
+	// }
+
+	// /**
+	//  * DOCS OUTDATED - ACTOR UPDATE
+	//  * 
+	//  * Sets assigned units to the array provided.
+	//  */
+	// @ServerSideOnly
+	// public setAssignedActors(units: U[]): void {
+	// 	this.assignedActors.setValue(units);
+	// }
+
+	// /**
+	//  * DOCS OUTDATED - ACTOR UPDATE
+	//  * 
+	//  * Unassigns the supplied unit from the order.
+	//  * 
+	//  * @returns If the unit was assigned to the order and now isn't, else false.
+	//  */
+	// @ServerSideOnly
+	// public removeActor(unit: IElementActor): boolean {
+	// 	if (!this.isActorAssigned(unit)) return false;
+
+	// 	this.assignedActors.setValue(this.assignedActors.getValue().filter(id => id !== unit));
+
+	// 	return true;
+	// }
+
 	/**
-	 * Assigns the supplied unit to this order.
+	 * DOCS OUTDATED - ACTOR UPDATE
 	 * 
-	 * @returns True if the unit was not assigned to this order and now is, else false.
-	 */
-	@ServerSideOnly
-	public assignUnit(unit: U): boolean {
-		if (this.isUnitAssigned(unit)) return false;
-
-		this.assignedUnitIds.setValue([...this.assignedUnitIds.getValue(), unit.getId()]);
-
-		return true;
-	}
-
-	/**
-	 * Sets assigned units to the array provided.
-	 */
-	@ServerSideOnly
-	public setAssignedUnits(units: U[]): void {
-		this.assignedUnitIds.setValue(units.map(unit => unit.getId()));
-	}
-
-	/**
-	 * Unassigns the supplied unit from the order.
-	 * 
-	 * @returns If the unit was assigned to the order and now isn't, else false.
-	 */
-	@ServerSideOnly
-	public removeUnit(unit: U): boolean {
-		if (!this.isUnitAssigned(unit)) return false;
-
-		this.assignedUnitIds.setValue(this.assignedUnitIds.getValue().filter(id => id !== unit.getId()));
-
-		return true;
-	}
-
-	/**
 	 * @returns An array of units assigned to this order.
 	 */
-	public getAssignedUnits(): U[] {
-		return this.assignedUnitIds.getValue().map(id => SpawnManager.getNetworkBehaviorById(id) as U);
+	public getAssignedActors(): IElementActor[] {
+		return this.assignedActors.getValue();
 	}
 
 	/**
+	 * DOCS OUTDATED - ACTOR UPDATE
+	 * 
 	 * @returns If the supplied unit has been assigned to this order.
 	 */
-	public isUnitAssigned(unit: U): boolean {
-		return this.assignedUnitIds.getValue().includes(unit.getId());
+	public isActorAssigned(actor: IElementActor): boolean {
+		return this.assignedActors.includes(actor);
 	}
 
-	/**
-	 * Tries to assign the supplied unit to the order.
-	 * 
-	 * @returns Whether or not any change occurred.
-	 */
-	@RPC.Method({
-		allowedEndpoints: RPC.AllowedEndpoints.CLIENT_TO_SERVER,
-		returnMode: RPC.ReturnMode.RETURNS
-	})
-	public tryAssignUnit(unitId: string, params: RPC.IncomingParams = RPC.DefaultIncomingParams): boolean {
-		assert(params.sender);
+	// /**
+	//  * DOCS OUTDATED - ACTOR UPDATE
+	//  * 
+	//  * Tries to assign the supplied unit to the order.
+	//  * 
+	//  * @returns Whether or not any change occurred.
+	//  */
+	// @RPC.Method({
+	// 	allowedEndpoints: RPC.AllowedEndpoints.CLIENT_TO_SERVER,
+	// 	returnMode: RPC.ReturnMode.RETURNS
+	// })
+	// public tryAssignUnit(unitId: string, params: RPC.IncomingParams = RPC.DefaultIncomingParams): boolean {
+	// 	assert(params.sender);
 
-		const unit = SpawnManager.getNetworkBehaviorById(unitId) as Unit<any, any> | undefined;
+	// 	const unit = SpawnManager.getNetworkBehaviorById(unitId) as U | undefined;
 
-		assert(unit);
-		assert((unit.parent as NetworkVariable<Unit<any, any>>).getValue() === this.originUnit.getValue());
+	// 	assert(unit);
+	// 	assert((unit.parent as NetworkVariable<Unit<any, any>>).getValue() === this.originActor.getValue());
 
-		const behavior = PlayerManager.singleton.getBehaviorFromPlayer(params.sender);
+	// 	const behavior = PlayerManager.singleton.getBehaviorFromPlayer(params.sender);
 
-		assert(behavior);
-		assert(this.originUnit.getValue().controller.getValue() === behavior);
+	// 	assert(behavior);
+	// 	assert(this.originActor.getValue().controller.getValue() === behavior);
 
-		return this.assignUnit(unit as U);
-	}
+	// 	return this.assignActor(unit as U);
+	// }
 
-	@RPC.Method({
-		allowedEndpoints: RPC.AllowedEndpoints.CLIENT_TO_SERVER,
-		returnMode: RPC.ReturnMode.RETURNS
-	})
-	public trySetAssignedUnits(unitIds: string[], params: RPC.IncomingParams = RPC.DefaultIncomingParams): void {
-		assert(params.sender);
+	// @RPC.Method({
+	// 	allowedEndpoints: RPC.AllowedEndpoints.CLIENT_TO_SERVER,
+	// 	returnMode: RPC.ReturnMode.RETURNS
+	// })
+	// public trySetAssignedUnits(unitIds: string[], params: RPC.IncomingParams = RPC.DefaultIncomingParams): void {
+	// 	assert(params.sender);
 
-		// ADD BACK VALIDATION LATER
-		// const unit = SpawnManager.getNetworkBehaviorById(unitId) as Unit<any, any> | undefined;
+	// 	// ADD BACK VALIDATION LATER
+	// 	// const unit = SpawnManager.getNetworkBehaviorById(unitId) as Unit<any, any> | undefined;
 
-		// assert(unit);
-		// assert((unit.parent as NetworkVariable<Unit<any, any>>).getValue() === this.originUnit.getValue());
+	// 	// assert(unit);
+	// 	// assert((unit.parent as NetworkVariable<Unit<any, any>>).getValue() === this.originUnit.getValue());
 
-		const behavior = PlayerManager.singleton.getBehaviorFromPlayer(params.sender);
+	// 	const behavior = PlayerManager.singleton.getBehaviorFromPlayer(params.sender);
 
-		assert(behavior);
-		assert(this.originUnit.getValue().controller.getValue() === behavior);
+	// 	assert(behavior);
+	// 	assert(this.originUnit.getValue().controller.getValue() === behavior);
 
-		this.setAssignedUnits(unitIds.map(id => SpawnManager.getNetworkBehaviorById(id) as U));
-	}
+	// 	this.setAssignedActors(unitIds.map(id => SpawnManager.getNetworkBehaviorById(id) as U));
+	// }
 
-	/**
-	 * 
-	 */
-	@RPC.Method({
-		allowedEndpoints: RPC.AllowedEndpoints.CLIENT_TO_SERVER
-	})
-	public tryExecute(params: RPC.IncomingParams = RPC.DefaultIncomingParams) {
-		assert(params.sender);
+	// /**
+	//  * 
+	//  */
+	// @RPC.Method({
+	// 	allowedEndpoints: RPC.AllowedEndpoints.CLIENT_TO_SERVER
+	// })
+	// public tryExecute(params: RPC.IncomingParams = RPC.DefaultIncomingParams) {
+	// 	assert(params.sender);
 
-		const behavior = PlayerManager.singleton.getBehaviorFromPlayer(params.sender);
+	// 	const behavior = PlayerManager.singleton.getBehaviorFromPlayer(params.sender);
 
-		assert(behavior);
-		assert(this.originUnit.getValue().controller.getValue() === behavior);
+	// 	assert(behavior);
+	// 	assert(this.originUnit.getValue().controller.getValue() === behavior);
 
-		this.execute();
-	}
+	// 	this.execute();
+	// }
 
-	@RPC.Method({
-		allowedEndpoints: RPC.AllowedEndpoints.CLIENT_TO_SERVER
-	})
-	public trySetParameters(orderParams: T, params: RPC.IncomingParams = RPC.DefaultIncomingParams) {
-		assert(params.sender);
+	// @RPC.Method({
+	// 	allowedEndpoints: RPC.AllowedEndpoints.CLIENT_TO_SERVER
+	// })
+	// public trySetParameters(orderParams: T, params: RPC.IncomingParams = RPC.DefaultIncomingParams) {
+	// 	assert(params.sender);
 
-		const behavior = PlayerManager.singleton.getBehaviorFromPlayer(params.sender);
+	// 	const behavior = PlayerManager.singleton.getBehaviorFromPlayer(params.sender);
 
-		assert(behavior);
-		assert(this.originUnit.getValue().controller.getValue() === behavior);
+	// 	assert(behavior);
+	// 	assert(this.originUnit.getValue().controller.getValue() === behavior);
 
-		// Needs validation.
-		this.executionParameters.setValue(orderParams);
-	}
+	// 	// Needs validation.
+	// 	this.executionParameters.setValue(orderParams);
+	// }
+
+	// @ServerSideOnly
+	// public execute() {
+	// 	this.getAssignedActors().forEach(unit => unit.getMembersRecursive().forEach(member => member.getController().onOrderReceived(this)));
+	// 	this.onExecutionBegan();
+	// }
 
 	/**
 	 * Implement execution code here.
 	 */
 	abstract onExecutionBegan(): void;
-
-	@ServerSideOnly
-	public execute() {
-		this.getAssignedUnits().forEach(unit => unit.getMembersRecursive().forEach(member => member.controller.getValue().onOrderReceived(this)));
-		this.onExecutionBegan();
-	}
 
 	protected getSourceScript(): ModuleScript {
 		return script as ModuleScript;

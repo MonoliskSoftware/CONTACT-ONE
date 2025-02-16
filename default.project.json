@@ -46,6 +46,12 @@
 		"Workspace": {
 			"$className": "Workspace",
 			"$path": "CONTACT-ONE-MAP/MEDIEVAL"
+		},
+		"StarterGui": {
+			"$className": "StarterGui",
+			"$properties": {
+				"VirtualCursorMode": "Enabled"
+			}
 		}
 	}
 }

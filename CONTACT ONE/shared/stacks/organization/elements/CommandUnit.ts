@@ -26,18 +26,18 @@ export class CommandUnit extends Unit<CommandUnitParent, CommandUnit | BattleUni
 	public readonly controller = new NetworkVariable<BaseController>(this, undefined!);
 
 	public readonly subordinates: (CommandUnit | BattleUnit)[] = [];
-	public readonly associatedOrders: BaseOrder<any, any>[] = [];
+	// public readonly associatedOrders: BaseOrder<any, any>[] = [];
 	public readonly stack = GameStack.COMMAND_STACK;
 
 	private readonly controllerBinder = new NetworkVariableBinder<BaseController, CommandUnit>(this, this.controller, "commandUnitOnCommandTaken", "commandUnitOnCommandRemoved");
 
-	public onOrderAdded(order: BaseOrder<any, any>) {
-		if (!this.associatedOrders.includes(order)) this.associatedOrders.push(order);
-	}
+	// public onOrderAdded(order: BaseOrder<any, any>) {
+	// 	if (!this.associatedOrders.includes(order)) this.associatedOrders.push(order);
+	// }
 
-	public onOrderRemoving(order: BaseOrder<any, any>) {
-		this.associatedOrders.remove(this.associatedOrders.indexOf(order));
-	}
+	// public onOrderRemoving(order: BaseOrder<any, any>) {
+	// 	this.associatedOrders.remove(this.associatedOrders.indexOf(order));
+	// }
 	
 	public onStart(): void {
 		super.onStart();
@@ -70,7 +70,7 @@ export class CommandUnit extends Unit<CommandUnitParent, CommandUnit | BattleUni
 		if (RunService.IsServer()) super.checkIfShouldDestroy();
 	}
 
-	public getFaction(): Faction | undefined {
+	public getFaction(): Faction {
 		let parent = this.parent.getValue();
 
 		while (parent) {
@@ -79,16 +79,16 @@ export class CommandUnit extends Unit<CommandUnitParent, CommandUnit | BattleUni
 			parent = parent.parent?.getValue();
 		}
 
-		return undefined;
+		throw `No faction!`;
 	}
 
-	public createOrder<T extends BaseOrder<any, C>, C extends dict>(clazz: Constructable<T>, config: C | false): T {
+	public createOrder<T extends BaseOrder<C>, C extends dict>(clazz: Constructable<T>, config: C | false): T {
 		if (RunService.IsServer()) {
-			const order = this.getGameObject().addComponent<BaseOrder<any, C>>(clazz, {
+			const order = this.getGameObject().addComponent<BaseOrder<C>>(clazz, {
 				initialNetworkVariableStates: ({
-					originUnit: this,
+					owner: this.commander.getValue(),
 					executionParameters: config ? config : undefined
-				} satisfies ExtractNetworkVariables<BaseOrder<any, any>> as unknown as Map<string, Networking.NetworkableTypes>)
+				} satisfies ExtractNetworkVariables<BaseOrder<any>> as unknown as Map<string, Networking.NetworkableTypes>)
 			});
 
 			return order as T;
@@ -103,7 +103,7 @@ export class CommandUnit extends Unit<CommandUnitParent, CommandUnit | BattleUni
 		allowedEndpoints: RPC.AllowedEndpoints.CLIENT_TO_SERVER,
 		returnMode: RPC.ReturnMode.RETURNS
 	})
-	private createOrderFromClientToServer<T extends BaseOrder<any, C>, C extends dict>(path: SceneSerialization.ComponentPath, config: C | false, incomingParams: RPC.IncomingParams = RPC.DefaultIncomingParams): string {
+	private createOrderFromClientToServer<T extends BaseOrder<C>, C extends dict>(path: SceneSerialization.ComponentPath, config: C | false, incomingParams: RPC.IncomingParams = RPC.DefaultIncomingParams): string {
 		assert(incomingParams.sender);
 
 		const behavior = PlayerManager.singleton.getBehaviorFromPlayer(incomingParams.sender);

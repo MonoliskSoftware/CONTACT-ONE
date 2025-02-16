@@ -10,12 +10,13 @@ import { NetworkObject } from "../Scripts/Networking/NetworkObject";
 import { NetworkVariable } from "../Scripts/Networking/NetworkVariable";
 import { Scene } from "../Scripts/Scenes/Scene";
 import { SceneManager } from "../Scripts/Scenes/SceneManager";
+import { flattenNestedArray } from "../util/NestedArray";
 import { BaseElement } from "./organization/elements/BaseElement";
 import { BattleUnit } from "./organization/elements/BattleUnit";
 import { CommandUnit } from "./organization/elements/CommandUnit";
 import { Faction } from "./organization/elements/Faction";
+import { UnitProfiles } from "./organization/templating/UnitProfiles";
 import { UnitTemplates } from "./organization/templating/UnitTemplates";
-import { UnitProfiles } from "./organization/UnitProfiles";
 import { Scenarios } from "./Scenarios";
 import { GameStack } from "./StackManager";
 
@@ -70,12 +71,12 @@ export class BattleManager extends NetworkBehavior {
 				parent: parent as unknown as Faction,
 				name: name,
 				sizeProfile: template.sizeProfile,
-				classProfile: template.classProfile
+				classProfile: template.classProfile,
 			} satisfies ExtractNetworkVariables<CommandUnit | BattleUnit> as unknown as Map<string, Networking.NetworkableTypes>)
 		});
 
-		UnitTemplates.flattenNestedArray(template.subordinates).forEach((subTemplate, index) => this.importUnit(unit, subTemplate, index + 1));
-		UnitTemplates.flattenNestedArray(template.members).forEach((loadout, index) => {
+		flattenNestedArray(template.subordinates).forEach((subTemplate, index) => this.importUnit(unit, subTemplate, index + 1));
+		flattenNestedArray(template.members).forEach((loadout, index) => {
 			const gameObject = createNetworkedGameObject("Character", unit.getGameObject());
 
 			const char = gameObject.addComponent(Character, {

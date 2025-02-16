@@ -1,5 +1,6 @@
 export namespace Loadouts {
 	export interface CharacterLoadout {
-		tools: [string]
+		tools: [string],
+		name: string
 	}
 }

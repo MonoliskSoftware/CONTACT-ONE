@@ -45,6 +45,8 @@ export const CharacterInventory: InventoryDescriptions.InventoryPreset<typeof Ch
 };
 
 export class Character extends NetworkBehavior {
+	public static defaultController: Constructable<CharacterController>;
+
 	/**
 	 * Reference to the unit this character is assigned to, or undefined if none.
 	 */
@@ -59,7 +61,14 @@ export class Character extends NetworkBehavior {
 
 	public readonly assignedTarget = new NetworkVariable<Character>(this, undefined!);
 
-	public readonly controller = new NetworkVariable<CharacterController>(this, undefined!);
+	// CONTROLLER MANAGEMENT
+	private readonly controller = new NetworkVariable<CharacterController>(this, undefined!);
+	private lastController: CharacterController | undefined;
+
+	/**
+	 * Reference to the fallback controller, in case none is active
+	 */
+	private fallbackController: CharacterController | undefined;
 
 	// SIGNALS
 	public readonly onIsCommanderChanged = new Signal<[boolean]>(`${this.getId()}IsCommanderChanged`);
@@ -67,8 +76,6 @@ export class Character extends NetworkBehavior {
 
 	// MISC
 	private readonly collector = new Collector();
-
-	public static defaultController: Constructable<CharacterController>;
 
 	// INVENTORY STUFF
 	public readonly inventory = new NetworkVariable<Inventory<typeof CharacterInventory>>(this, this.getGameObject().addComponent<Inventory<typeof CharacterInventory>>(Inventory, { preset: CharacterInventory }));
@@ -83,21 +90,14 @@ export class Character extends NetworkBehavior {
 			// needs refinement
 			this.initializeRig();
 
-			this.rig.getValue().PivotTo(SpawnLocation.getSpawnLocationOfFaction((this.unit.getValue() as CommandUnit | BattleUnit).getFaction()?.name.getValue() ?? "")?.getGameObject().getInstance().GetPivot() ?? CFrame.identity);
+			this.rig.getValue().PivotTo(SpawnLocation.getSpawnLocationOfFaction(this.unit.getValue().getFaction()?.name.getValue() ?? "")?.getGameObject().getInstance().GetPivot() ?? CFrame.identity);
 			// this.rig.getValue().PivotTo(new CFrame((math.random() * 2 - 1) * 1024, 0, (math.random() * 2 - 1) * 1024));
 
-			task.delay(1, () => {
-				// NEEDS BETTER IMPLEMENTATION
-
-				if (!this.controller.getValue()) this.controller.setValue(this.getGameObject().addComponent(Character.defaultController, {
-					initialNetworkVariableStates: ({
-						character: this
-					} satisfies ExtractNetworkVariables<AIBattleController> as unknown as Map<string, Networking.NetworkableTypes>)
-				}));
-			});
+			if (!this.getController()) this.setController(this.getFallbackController());
 		}
 
 		this.unitBinder.start();
+		this.controller.onValueChanged.connect(() => this.onControllerChanged());
 	}
 
 	public willRemove(): void {
@@ -184,6 +184,15 @@ export class Character extends NetworkBehavior {
 		if (!Utilities.wasDestroyed(this)) this.getGameObject().destroy();
 	}
 
+	private onControllerChanged() {
+		const currentController = this.getController();
+
+		this.lastController?.disable();
+		currentController?.enable();	
+		
+		this.lastController = currentController;
+	}
+
 	//////////////////////////////
 	// GETTERS
 	//////////////////////////////
@@ -206,5 +215,26 @@ export class Character extends NetworkBehavior {
 
 	public getFaction(): Faction | undefined {
 		return (this.unit.getValue() as BattleUnit | CommandUnit).getFaction();
+	}
+
+	public getController(): CharacterController {
+		return this.controller.getValue();
+	}
+
+	public getFallbackController(): CharacterController {
+		if (!this.fallbackController) this.fallbackController = this.getGameObject().addComponent(Character.defaultController, {
+			initialNetworkVariableStates: ({
+				character: this
+			} satisfies ExtractNetworkVariables<AIBattleController> as unknown as Map<string, Networking.NetworkableTypes>)
+		});
+		
+		return this.fallbackController;
+	}
+
+	//////////////////////////////
+	// SETTERS
+	//////////////////////////////
+	public setController(controller: CharacterController) {
+		this.controller.setValue(controller);
 	}
 }

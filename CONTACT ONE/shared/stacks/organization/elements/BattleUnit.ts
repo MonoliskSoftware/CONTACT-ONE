@@ -45,7 +45,7 @@ export class BattleUnit extends Unit<BattleUnit | CommandUnit, BattleUnit> {
 		return undefined;
 	}
 
-	public getFaction(): Faction | undefined {
-		return this.getCommandUnit()?.getFaction();
+	public getFaction(): Faction {
+		return this.getCommandUnit()!.getFaction();
 	}
 }

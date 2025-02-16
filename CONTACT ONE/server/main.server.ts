@@ -1,4 +1,4 @@
-import { StarterPlayer } from "@rbxts/services";
+import { StarterPlayer, Workspace } from "@rbxts/services";
 import { PlayerBehavior } from "CONTACT ONE/shared/players/PlayerBehavior";
 import { PlayerManager } from "CONTACT ONE/shared/players/PlayerManager";
 import { BattleManager } from "CONTACT ONE/shared/stacks/BattleManager";
@@ -20,11 +20,11 @@ const q: Scenarios.ORBAT = {
 	factions: [
 		{
 			name: "AGF",
-			rootUnits: [TestTemplate, TestTemplate]
+			rootUnits: [TestTemplate, /*TestTemplate*/]
 		},
 		{
 			name: "AOF",
-			rootUnits: [TestTemplate, TestTemplate]
+			rootUnits: [/*TestTemplate, TestTemplate*/]
 		}
 	],
 	winConditions: [
@@ -35,5 +35,7 @@ const q: Scenarios.ORBAT = {
 		} as Scenarios.FactionEliminationCondition
 	]
 };
+
+Workspace.WaitForChild("WhiteHouseBuild2").Destroy();
 
 BattleManager.getSingleton().loadORBAT(q);

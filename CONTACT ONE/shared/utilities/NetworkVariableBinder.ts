@@ -52,8 +52,8 @@ export class NetworkVariableBinder<T extends Networking.NetworkableTypes, C exte
 
 	private apply(value: T | undefined) {
 		if (value !== this.lastValue) {
-			if (this.lastValue !== undefined) (this.lastValue[this.deactivation] as (this: T, behavior: C) => void)(this.behavior);
-			if (value !== undefined) (value[this.activation] as (this: T, behavior: C) => void)(this.behavior);
+			if (this.lastValue !== undefined) ((this.lastValue)?.[this.deactivation] as (this: T, behavior: C) => void)(this.behavior);
+			if (value !== undefined) ((value)?.[this.activation] as (this: T, behavior: C) => void)(this.behavior);
 
 			this.lastValue = value;
 		}

@@ -1,4 +1,5 @@
-import { NestedArray, UnitTemplates } from "./organization/templating/UnitTemplates";
+import { NestedArray } from "../util/NestedArray";
+import { UnitTemplates } from "./organization/templating/UnitTemplates";
 
 export namespace Scenarios {
 	export type UnitDescription = UnitTemplates.Template & {

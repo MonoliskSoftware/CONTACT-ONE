@@ -111,7 +111,7 @@ export class PlayerBehavior extends NetworkBehavior implements BaseController {
 		if (RunService.IsServer()) {
 			return Object.fromEntries(Object.entries(StackBehaviorConstructors).map(([key, value]) => [key, this.getGameObject().addComponent(value, {
 				initialNetworkVariableStates: ({
-					playerBehavior: this
+					playerBehavior: this,
 				} satisfies ExtractNetworkVariables<StackBehavior> as unknown as Map<string, Networking.NetworkableTypes>)
 			})]));
 		} else {

@@ -7,7 +7,7 @@ import { Item } from "./Item";
 
 export class Inventory<T extends InventoryDescriptions.InventoryPreset<any>> extends NetworkBehavior {
 	public readonly preset!: T;
-	public readonly integratedStorage = new NetworkList<Item>(this, []);
+	public readonly integratedStorage = new NetworkList<Item>(this);
 
 	public onStart(): void {
 
