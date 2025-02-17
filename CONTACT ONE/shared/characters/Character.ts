@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { RunService } from "@rbxts/services";
-import { AIBattleController } from "../ai/battlethink/AIBattleController";
-import { CharacterController } from "../controllers/CharacterController";
+import { BattleController } from "../controllers/BattleController";
 import { SpawnLocation } from "../entities/SpawnLocation";
 import { Inventory } from "../inventory/Inventory";
 import { InventoryDescriptions } from "../inventory/InventoryDescriptions";
@@ -45,7 +44,7 @@ export const CharacterInventory: InventoryDescriptions.InventoryPreset<typeof Ch
 };
 
 export class Character extends NetworkBehavior {
-	public static defaultController: Constructable<CharacterController>;
+	public static defaultController: Constructable<BattleController>;
 
 	/**
 	 * Reference to the unit this character is assigned to, or undefined if none.
@@ -62,13 +61,13 @@ export class Character extends NetworkBehavior {
 	public readonly assignedTarget = new NetworkVariable<Character>(this, undefined!);
 
 	// CONTROLLER MANAGEMENT
-	private readonly controller = new NetworkVariable<CharacterController>(this, undefined!);
-	private lastController: CharacterController | undefined;
+	private readonly controller = new NetworkVariable<BattleController>(this, undefined!);
+	private lastController: BattleController | undefined;
 
 	/**
 	 * Reference to the fallback controller, in case none is active
 	 */
-	private fallbackController: CharacterController | undefined;
+	private fallbackController: BattleController | undefined;
 
 	// SIGNALS
 	public readonly onIsCommanderChanged = new Signal<[boolean]>(`${this.getId()}IsCommanderChanged`);
@@ -85,33 +84,7 @@ export class Character extends NetworkBehavior {
 		} satisfies ExtractNetworkVariables<ToolInterface<typeof CharacterInventory>> as unknown as Map<string, Networking.NetworkableTypes>)
 	}));
 
-	public onStart(): void {
-		if (RunService.IsServer()) {
-			// needs refinement
-			this.initializeRig();
-
-			this.rig.getValue().PivotTo(SpawnLocation.getSpawnLocationOfFaction(this.unit.getValue().getFaction()?.name.getValue() ?? "")?.getGameObject().getInstance().GetPivot() ?? CFrame.identity);
-			// this.rig.getValue().PivotTo(new CFrame((math.random() * 2 - 1) * 1024, 0, (math.random() * 2 - 1) * 1024));
-
-			if (!this.getController()) this.setController(this.getFallbackController());
-		}
-
-		this.unitBinder.start();
-		this.controller.onValueChanged.connect(() => this.onControllerChanged());
-	}
-
-	public willRemove(): void {
-		this.collector.teardown();
-		this.unitBinder.teardown();
-	}
-
-	protected getSourceScript(): ModuleScript {
-		return script as ModuleScript;
-	}
-
-	//////////////////////////////
-	// INITIALIZATION
-	//////////////////////////////
+	//#region Initialization
 	@ServerSideOnly
 	private initializeCollider() {
 		const collider = new Instance("Part");
@@ -160,16 +133,11 @@ export class Character extends NetworkBehavior {
 		humanoid.SetStateEnabled(Enum.HumanoidStateType.RunningNoPhysics, false);
 		humanoid.SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false);
 
-		// Setup callbacks
-		this.collector.add(humanoid.Died.Connect(() => this.onDied()));
-
 		// Initialize other
 		this.initializeCollider();
 	}
 
-	//////////////////////////////
-	// CALLBACKS
-	//////////////////////////////
+	//#region Callbacks
 	public onAssignedAsCommander() {
 		this.onIsCommanderChanged.fire(true);
 	}
@@ -181,21 +149,60 @@ export class Character extends NetworkBehavior {
 	private onDied() {
 		this.died.fire();
 
-		if (!Utilities.wasDestroyed(this)) this.getGameObject().destroy();
+		if (!Utilities.wasDestroyed(this) && RunService.IsServer()) this.getGameObject().destroy();
 	}
 
 	private onControllerChanged() {
 		const currentController = this.getController();
 
-		this.lastController?.disable();
-		currentController?.enable();	
-		
+		// need cleanup for controller.character
+		if (this.lastController) {
+			this.lastController.character = undefined!;
+
+			this.lastController.disable();
+		}
+
+		if (currentController) {
+			if (currentController.character !== this) currentController.character = this;
+
+			currentController.enable();
+		}
+
 		this.lastController = currentController;
 	}
 
-	//////////////////////////////
-	// GETTERS
-	//////////////////////////////
+	public onStart(): void {
+		if (RunService.IsServer()) {
+			// needs refinement
+			this.initializeRig();
+
+			this.rig.getValue().PivotTo(SpawnLocation.getSpawnLocationOfFaction(this.unit.getValue().getFaction()?.name.getValue() ?? "")?.getGameObject().getInstance().GetPivot() ?? CFrame.identity);
+			// this.rig.getValue().PivotTo(new CFrame((math.random() * 2 - 1) * 1024, 0, (math.random() * 2 - 1) * 1024));
+
+			if (!this.getController()) this.setController(this.getFallbackController());
+		}
+
+		this.rig.waitForValue().then(() => {
+			// Setup callbacks
+			this.collector.add(this.getHumanoid().Died.Connect(() => this.onDied()));
+		});
+
+		this.unitBinder.start();
+		this.controller.onValueChanged.connect(() => this.onControllerChanged());
+	}
+
+	public willRemove(): void {
+		if (RunService.IsServer()) this.setController(undefined);
+
+		this.collector.teardown();
+		this.unitBinder.teardown();
+	}
+
+	protected getSourceScript(): ModuleScript {
+		return script as ModuleScript;
+	}
+
+	//#region Getters
 	/**
 	 * Returns whether or not this Character is the commander of its units
 	 */
@@ -217,24 +224,20 @@ export class Character extends NetworkBehavior {
 		return (this.unit.getValue() as BattleUnit | CommandUnit).getFaction();
 	}
 
-	public getController(): CharacterController {
+	public getController(): BattleController {
 		return this.controller.getValue();
 	}
 
-	public getFallbackController(): CharacterController {
+	public getFallbackController(): BattleController {
 		if (!this.fallbackController) this.fallbackController = this.getGameObject().addComponent(Character.defaultController, {
-			initialNetworkVariableStates: ({
-				character: this
-			} satisfies ExtractNetworkVariables<AIBattleController> as unknown as Map<string, Networking.NetworkableTypes>)
+			character: this
 		});
-		
+
 		return this.fallbackController;
 	}
 
-	//////////////////////////////
-	// SETTERS
-	//////////////////////////////
-	public setController(controller: CharacterController) {
-		this.controller.setValue(controller);
+	//#region Setters
+	public setController(controller: BattleController | undefined) {
+		this.controller.setValue(controller!);
 	}
 }

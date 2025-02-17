@@ -63,8 +63,6 @@ export class CharacterPathfinder {
 							if (shouldCreatePath) {
 								const pathOutput = this.agent.createPath(goal).expect();
 
-								warn("Generating");
-
 								if (pathOutput.status !== Enum.PathStatus.Success) {
 									warn(pathOutput.status);
 
@@ -74,8 +72,6 @@ export class CharacterPathfinder {
 								this.agent.setCurrentPath(pathOutput.path);
 							} else {
 								const [pathOutput] = this.agent.appendPath(goal, this.agent.getCurrentPath()!).expect();
-
-								warn("Recalculating");
 
 								if (pathOutput.status !== Enum.PathStatus.Success) {
 									warn(pathOutput.status);
@@ -121,7 +117,7 @@ export class CharacterPathfinder {
 	}
 
 	private onWaypointChanged(waypoint: PathWaypoint | undefined) {
-		print(waypoint?.Label);
+		
 	}
 
 	public teardown() {

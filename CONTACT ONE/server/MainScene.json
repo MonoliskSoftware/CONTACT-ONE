@@ -40,6 +40,13 @@
 				},
 				{
 					"path": [
+						"CONTACT ONE/stacks/organization/orders/OrderManager",
+						"OrderManager"
+					],
+					"state": {}
+				},
+				{
+					"path": [
 						"CONTACT ONE/players/PlayerManager",
 						"PlayerManager"
 					],

@@ -97,7 +97,7 @@ export class ControlModule {
 	activeControlModule: Constructable<BaseCharacterController> | undefined; // Used to prevent unnecessarily expensive checks on each input event
 	activeController: BaseCharacterController | undefined;
 	touchJumpController: TouchJump | undefined;
-	moveFunction: ((player: Player, direction: Vector3, cameraRelative: boolean) => void) | undefined;
+	moveFunction: ((direction: Vector3, cameraRelative: boolean) => void) | undefined;
 	humanoid: Humanoid | undefined;
 	lastInputType: Enum.UserInputType = Enum.UserInputType.None;
 	controlsEnabled = true;
@@ -235,7 +235,7 @@ export class ControlModule {
 			this.activeController?.Enable(false);
 
 			if (this.touchJumpController) this.touchJumpController.Enable(false);
-			if (this.moveFunction) this.moveFunction(Players.LocalPlayer, Vector3.zero, true);
+			if (this.moveFunction) this.moveFunction(Vector3.zero, true);
 		};
 
 		const enable = () => {
@@ -485,7 +485,7 @@ export class ControlModule {
 				moveVector = this.updateVRMoveVector(moveVector);
 			}
 
-			if (this.moveFunction) this.moveFunction(Players.LocalPlayer, moveVector, false);
+			if (this.moveFunction) this.moveFunction(moveVector, false);
 			//}
 
 			// && make them jump if ( needed
@@ -680,5 +680,9 @@ export class ControlModule {
 		}
 
 		return this.controllers.get(ClickToMove);*/ // TODO CLICKTOMOVE
+	}
+
+	SetMoveFunction(callback: ControlModule["moveFunction"]) {
+		this.moveFunction = callback;
 	}
 }

@@ -216,8 +216,8 @@ export namespace CharacterPathfinding {
 			this.visualizer.setIndex(overrideIndex);
 		}
 
-		public isFinished() {
-			return this.currentPath && this.waypointIndex === this.currentPath.waypoints.size();
+		public isFinished(): boolean {
+			return this.currentPath !== undefined && this.waypointIndex === this.currentPath.waypoints.size();
 		}
 
 		private getNodesForRecalculation(waypoints: Vector3[]): Vector3[] {

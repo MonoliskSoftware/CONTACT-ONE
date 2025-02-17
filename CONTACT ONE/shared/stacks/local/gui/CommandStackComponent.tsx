@@ -13,9 +13,10 @@ import { Unit } from "../../organization/elements/Unit";
 import { BaseOrder } from "../../organization/orders/BaseOrder";
 import { GuardOrder } from "../../organization/orders/GuardOrder";
 import { MoveOrder } from "../../organization/orders/MoveOrder";
+import { OrderManager } from "../../organization/orders/OrderManager";
 import { CommandStackBehavior } from "../CommandStackBehavior";
 import { StackComponentProps } from "../StackBehavior";
-import { StackBehaviorState } from "../StackBehaviorState";
+import { UnitSelector } from "./commandstack/UnitSelector";
 
 const ALL_ORDERS = [MoveOrder, GuardOrder];
 
@@ -382,7 +383,7 @@ const OrderCreator: React.FC<{
 					Event={{
 						Activated: () => {
 							if (commandUnit) {
-								const order = commandUnit.createOrder(availableOrder, false);
+								const order = OrderManager.singleton.createOrder(availableOrder, commandUnit.commander.getValue(), false);
 
 								setOrders([order]);
 							}
@@ -422,21 +423,6 @@ const OrderCreator: React.FC<{
 	</frame >;
 };
 
-const EliminatedScreen: React.FC<StackComponentProps<CommandStackBehavior>> = (props: StackComponentProps<CommandStackBehavior>) => {
-	const guiManagerContext = useContext(GuiManagerContext);
-
-	assert(guiManagerContext);
-
-	return <textbutton
-		Text={"go to menu"}
-		Event={{
-			Activated: () => props.behavior.tryExit()
-		}}
-		TextSize={100}
-		AutomaticSize={Enum.AutomaticSize.XY}
-	/>;
-};
-
 export const CommandStackComponent: React.FC<StackComponentProps<CommandStackBehavior>> = (props: StackComponentProps<CommandStackBehavior>) => {
 	const guiManagerContext = useContext(GuiManagerContext);
 
@@ -473,7 +459,7 @@ export const CommandStackComponent: React.FC<StackComponentProps<CommandStackBeh
 
 	return (
 		<screengui>
-			{behaviorState === StackBehaviorState.ELIMINATED ? <EliminatedScreen {...props} /> : <>
+			{/* {behaviorState === StackBehaviorState.ELIMINATED ? <EliminatedScreen {...props} /> : <>
 				<OrderEditor
 					rootUnit={commandUnit as Unit<any, any>}
 					orders={selectedOrders}
@@ -502,10 +488,10 @@ export const CommandStackComponent: React.FC<StackComponentProps<CommandStackBeh
 				<uilistlayout
 					FillDirection={Enum.FillDirection.Horizontal}
 				/>
-			</>}
-			{/* <UnitSelector 
+			</>} */}
+			<UnitSelector 
 				roots={controlledUnits}
-			/> */}
+			/>
 
 		</screengui>
 	);

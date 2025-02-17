@@ -1,11 +1,15 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { OrderBehavior } from "CONTACT ONE/shared/ai/battlethink/OrderBehavior";
 import { Character } from "CONTACT ONE/shared/characters/Character";
-import { Constructable, dict } from "CORP/shared/Libraries/Utilities";
+import { PlayerManager } from "CONTACT ONE/shared/players/PlayerManager";
+import { Constructable, dict, ServerSideOnly } from "CORP/shared/Libraries/Utilities";
 import { GameObject } from "CORP/shared/Scripts/Componentization/GameObject";
 import { NetworkBehavior } from "CORP/shared/Scripts/Networking/NetworkBehavior";
 import { NetworkList } from "CORP/shared/Scripts/Networking/NetworkList";
 import { NetworkVariable } from "CORP/shared/Scripts/Networking/NetworkVariable";
+import { RPC } from "CORP/shared/Scripts/Networking/RPC";
+import { SpawnManager } from "CORP/shared/Scripts/Networking/SpawnManager";
+import { Unit } from "../elements/Unit";
 
 type OptionalKeys<T> = {
 	[K in keyof T]: object extends Pick<T, K> ? K : never;
@@ -35,6 +39,8 @@ export interface IElementActor extends NetworkBehavior {
 	onOrderAdded(order: BaseOrder<any>): void;
 	onOrderRemoving(order: BaseOrder<any>): void;
 }
+
+export type ElementActor = Unit<any, any> | Character;
 
 /**
  * Orders are used to define instructions for units. Order cans be given by players and by AI.
@@ -91,15 +97,15 @@ export abstract class BaseOrder<T extends dict> extends NetworkBehavior {
 	// 	return true;
 	// }
 
-	// /**
-	//  * DOCS OUTDATED - ACTOR UPDATE
-	//  * 
-	//  * Sets assigned units to the array provided.
-	//  */
-	// @ServerSideOnly
-	// public setAssignedActors(units: U[]): void {
-	// 	this.assignedActors.setValue(units);
-	// }
+	/**
+	 * DOCS OUTDATED - ACTOR UPDATE
+	 * 
+	 * Sets assigned units to the array provided.
+	 */
+	@ServerSideOnly
+	public setAssignedActors(units: IElementActor[]): void {
+		this.assignedActors.setValue(units);
+	}
 
 	// /**
 	//  * DOCS OUTDATED - ACTOR UPDATE
@@ -162,64 +168,66 @@ export abstract class BaseOrder<T extends dict> extends NetworkBehavior {
 	// 	return this.assignActor(unit as U);
 	// }
 
-	// @RPC.Method({
-	// 	allowedEndpoints: RPC.AllowedEndpoints.CLIENT_TO_SERVER,
-	// 	returnMode: RPC.ReturnMode.RETURNS
-	// })
-	// public trySetAssignedUnits(unitIds: string[], params: RPC.IncomingParams = RPC.DefaultIncomingParams): void {
-	// 	assert(params.sender);
+	@RPC.Method({
+		allowedEndpoints: RPC.AllowedEndpoints.CLIENT_TO_SERVER,
+		returnMode: RPC.ReturnMode.RETURNS
+	})
+	public trySetAssignedActors(unitIds: string[], params: RPC.IncomingParams = RPC.DefaultIncomingParams): void {
+		assert(params.sender);
 
-	// 	// ADD BACK VALIDATION LATER
-	// 	// const unit = SpawnManager.getNetworkBehaviorById(unitId) as Unit<any, any> | undefined;
+		// ADD BACK VALIDATION LATER
+		// const unit = SpawnManager.getNetworkBehaviorById(unitId) as Unit<any, any> | undefined;
 
-	// 	// assert(unit);
-	// 	// assert((unit.parent as NetworkVariable<Unit<any, any>>).getValue() === this.originUnit.getValue());
+		// assert(unit);
+		// assert((unit.parent as NetworkVariable<Unit<any, any>>).getValue() === this.originUnit.getValue());
 
-	// 	const behavior = PlayerManager.singleton.getBehaviorFromPlayer(params.sender);
+		const behavior = PlayerManager.singleton.getBehaviorFromPlayer(params.sender);
 
-	// 	assert(behavior);
-	// 	assert(this.originUnit.getValue().controller.getValue() === behavior);
+		assert(behavior);
+		// assert(this.originUnit.getValue().controller.getValue() === behavior);
 
-	// 	this.setAssignedActors(unitIds.map(id => SpawnManager.getNetworkBehaviorById(id) as U));
-	// }
+		this.setAssignedActors(unitIds.map(id => SpawnManager.getNetworkBehaviorById(id) as IElementActor));
+	}
 
-	// /**
-	//  * 
-	//  */
-	// @RPC.Method({
-	// 	allowedEndpoints: RPC.AllowedEndpoints.CLIENT_TO_SERVER
-	// })
-	// public tryExecute(params: RPC.IncomingParams = RPC.DefaultIncomingParams) {
-	// 	assert(params.sender);
+	/**
+	 * 
+	 */
+	@RPC.Method({
+		allowedEndpoints: RPC.AllowedEndpoints.CLIENT_TO_SERVER
+	})
+	public tryExecute(params: RPC.IncomingParams = RPC.DefaultIncomingParams) {
+		assert(params.sender);
 
-	// 	const behavior = PlayerManager.singleton.getBehaviorFromPlayer(params.sender);
+		const behavior = PlayerManager.singleton.getBehaviorFromPlayer(params.sender);
 
-	// 	assert(behavior);
-	// 	assert(this.originUnit.getValue().controller.getValue() === behavior);
+		assert(behavior);
+		// assert(this.originUnit.getValue().controller.getValue() === behavior);
 
-	// 	this.execute();
-	// }
+		this.execute();
+	}
 
-	// @RPC.Method({
-	// 	allowedEndpoints: RPC.AllowedEndpoints.CLIENT_TO_SERVER
-	// })
-	// public trySetParameters(orderParams: T, params: RPC.IncomingParams = RPC.DefaultIncomingParams) {
-	// 	assert(params.sender);
+	@RPC.Method({
+		allowedEndpoints: RPC.AllowedEndpoints.CLIENT_TO_SERVER
+	})
+	public trySetParameters(orderParams: T, params: RPC.IncomingParams = RPC.DefaultIncomingParams) {
+		assert(params.sender);
 
-	// 	const behavior = PlayerManager.singleton.getBehaviorFromPlayer(params.sender);
+		const behavior = PlayerManager.singleton.getBehaviorFromPlayer(params.sender);
 
-	// 	assert(behavior);
-	// 	assert(this.originUnit.getValue().controller.getValue() === behavior);
+		assert(behavior);
+		// assert(this.originUnit.getValue().controller.getValue() === behavior);
 
-	// 	// Needs validation.
-	// 	this.executionParameters.setValue(orderParams);
-	// }
+		// Needs validation.
+		this.executionParameters.setValue(orderParams);
+	}
 
-	// @ServerSideOnly
-	// public execute() {
-	// 	this.getAssignedActors().forEach(unit => unit.getMembersRecursive().forEach(member => member.getController().onOrderReceived(this)));
-	// 	this.onExecutionBegan();
-	// }
+	@ServerSideOnly
+	public execute() {
+		const handleMember = (member: Character) => member.getController().onOrderReceived(this);
+
+		this.getAssignedActors().forEach(actor => actor instanceof Character ? handleMember(actor) : (actor as unknown as Unit<any, any>).getMembersRecursive().forEach(handleMember));
+		this.onExecutionBegan();
+	}
 
 	/**
 	 * Implement execution code here.

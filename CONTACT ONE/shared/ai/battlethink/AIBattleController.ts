@@ -2,7 +2,7 @@
 import { RunService } from "@rbxts/services";
 import { Character, Rig } from "CONTACT ONE/shared/characters/Character";
 import { Formations } from "CONTACT ONE/shared/characters/Formations";
-import { CharacterController } from "CONTACT ONE/shared/controllers/CharacterController";
+import { BattleController } from "CONTACT ONE/shared/controllers/BattleController";
 import { Unit } from "CONTACT ONE/shared/stacks/organization/elements/Unit";
 import { BaseOrder } from "CONTACT ONE/shared/stacks/organization/orders/BaseOrder";
 import { dict } from "CORP/shared/Libraries/Utilities";
@@ -32,9 +32,8 @@ export function createMovement(goal: Goal, enabled = true): Movement {
 
 const FORMATION_RECALCULATION_THRESHOLD = 4;
 
-export class AIBattleController extends CharacterController {
+export class AIBattleController extends BattleController {
 	// Utility references
-	private characterReference!: Character;
 	private humanoid!: Humanoid;
 	private rig!: Rig;
 	private unit!: Unit<any, any>;
@@ -103,19 +102,6 @@ export class AIBattleController extends CharacterController {
 	}
 	//#endregion
 
-	//////////////////////////////
-	// TASK SPECIFIC MOVEMENTS
-	//////////////////////////////
-	// private instantiateTargetApproachMovement(target: Vector3) {
-	// 	if (this.targetApproachMovement) warn("Hey!");
-
-	// 	this.pathfindingPromises.push(new Promise(() => {
-	// 		const trip = this.pathfindingAgent.createTrip(target);
-
-	// 		this.targetApproachMovement = this.addMovement(new TripMovement(this, "AttackApproachMovement", trip), APPROACH_BEHAVIOR_PRIORITY);
-	// 	}));
-	// }
-
 	//#region Updating
 	private updateCurrentMovement(): Movement | undefined {
 		const currentMovement = this.getCurrentMovement();
@@ -130,57 +116,12 @@ export class AIBattleController extends CharacterController {
 	}
 
 	private update(deltaTime: number) {
-		this.pathfinder.update();
+		if (this.isEnabled()) {
+			this.pathfinder.update();
 
-		this.updateCurrentMovement();
-		this.updateMovementIntoFormation();
-	}
-
-	private updateStrike(distanceToTarget: number) {
-		if (distanceToTarget < MIN_PHYSICAL_ATTACK_DISTANCE) {
-			this.humanoid.Jump = true;
-			this.humanoid.RootPart!.AssemblyAngularVelocity = new Vector3(0, 100, 0);
+			this.updateCurrentMovement();
+			this.updateMovementIntoFormation();
 		}
-	}
-
-	private updateAttack() {
-		// const target = this.characterReference.assignedTarget.getValue();
-
-		// if (target) {
-		// 	const targetRig = target.rig.getValue();
-		// 	const targetPos = targetRig.GetPivot().Position;
-		// 	const distanceToTarget = targetPos.sub(this.rig.GetPivot().Position).Magnitude;
-
-		// 	this.updateStrike(distanceToTarget);
-
-		// 	if (distanceToTarget > Pathfinding.MIN_DISTANCE_FROM_GOAL_FOR_PATHFINDING) {
-		// 		if (this.targetAttackMovement) this.targetAttackMovement.enabled = false;
-
-		// 		if (!this.targetApproachMovement) {
-		// 			this.instantiateTargetApproachMovement(targetPos);
-		// 		} else if (targetPos.sub(this.targetApproachMovement.trip.goal).Magnitude > Pathfinding.MIN_DISTANCE_FROM_GOAL_FOR_RECALCULATION) {
-		// 			this.targetApproachMovement.dispose();
-		// 			this.targetApproachMovement = undefined;
-
-		// 			this.instantiateTargetApproachMovement(targetPos);
-		// 		}
-		// 	} else {
-		// 		if (this.targetApproachMovement) this.targetApproachMovement.enabled = false;
-		// 		if (this.targetAttackMovement) {
-		// 			this.targetAttackMovement.enabled = true;
-
-		// 			this.targetAttackMovement.target = targetPos;
-		// 		}
-		// 	}
-		// } else {
-		// 	if (this.targetApproachMovement) {
-		// 		this.targetApproachMovement.dispose();
-
-		// 		this.targetApproachMovement = undefined;
-		// 	}
-
-		// 	if (this.targetAttackMovement) this.targetAttackMovement.enabled = false;
-		// }
 	}
 	//#endregion
 
@@ -190,7 +131,7 @@ export class AIBattleController extends CharacterController {
 	 */
 	private getFormationPosition() {
 		const unit = this.unit;
-		const index = unit.directMembers.indexOf(this.characterReference);
+		const index = unit.directMembers.indexOf(this.character);
 
 		const commanderOrigin = unit.commander.getValue().rig.getValue().GetPivot();
 
@@ -200,7 +141,7 @@ export class AIBattleController extends CharacterController {
 	}
 
 	private updateMovementIntoFormation() {
-		const shouldMoveIntoFormation = !this.characterReference.isCommander() && this.shouldMaintainFormation();
+		const shouldMoveIntoFormation = !this.character.isCommander() && this.shouldMaintainFormation();
 
 		if (this.formationMovement !== undefined) {
 			if (shouldMoveIntoFormation) this.formationGoal.position = this.getFormationPosition();
@@ -220,14 +161,21 @@ export class AIBattleController extends CharacterController {
 			this.currentOrder = order;
 			this.currentOrderBehavior = this.getGameObject().addComponent(order.orderBehavior, {
 				order: order,
-				character: this.characterReference,
+				character: this.character,
 				controller: this
 			});
 		}
 	}
 
 	protected onControllerEnabled(): void {
+		if (RunService.IsServer()) {
+			this.humanoid = this.character.getHumanoid();
+			this.rig = this.character.rig.getValue();
+			this.unit = this.character.unit.getValue();
 
+			this.pathfinder = new CharacterPathfinder(this.humanoid);
+			this.goalCompleted = this.pathfinder.goalCompleted;
+		}
 	}
 
 	protected onControllerDisabled(): void {
@@ -248,40 +196,13 @@ export class AIBattleController extends CharacterController {
 	}
 
 	public shouldTryGetNewTarget(): boolean {
-		return this.characterReference.assignedTarget.getValue() === undefined;
-	}
-	//#endregion
-
-	//#region Target management
-	public scanForTargets() {
-		// SpawnManager.spawnedNetworkBehaviors.forEach(behavior => {
-		// 	if (behavior instanceof Character) {
-		// 		const otherUnit = behavior.unit.getValue() as CommandUnit | BattleUnit;
-		// 		const thisUnit = this.unit as CommandUnit | BattleUnit;
-
-		// 		if (!otherUnit) warn(`No unit found for other ${behavior.getId()}`);
-		// 		if (!thisUnit) warn(`No unit found for this ${this.getId()}`);
-
-		// 		if (otherUnit && thisUnit && otherUnit.getFaction() !== thisUnit.getFaction()) {
-		// 			if (behavior.rig.getValue().GetPivot().Position.sub(this.rig.GetPivot().Position).Magnitude < 100)
-		// 				this.unit.tryReportTarget(behavior);
-		// 		}
-		// 	}
-		// });
+		return this.character.assignedTarget.getValue() === undefined;
 	}
 	//#endregion
 
 	//#region Callbacks
 	public onStart(): void {
 		if (RunService.IsServer()) {
-			this.characterReference = this.character.getValue();
-			this.humanoid = this.characterReference.getHumanoid();
-			this.rig = this.characterReference.rig.getValue();
-			this.unit = this.characterReference.unit.getValue();
-
-			this.pathfinder = new CharacterPathfinder(this.humanoid);
-			this.goalCompleted = this.pathfinder.goalCompleted;
-
 			this.heartbeatConnection = RunService.Heartbeat.Connect(delta => this.update(delta));
 
 			// Setup formations

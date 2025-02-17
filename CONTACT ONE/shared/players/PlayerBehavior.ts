@@ -1,6 +1,8 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import Object from "@rbxts/object-utils";
-import { RunService } from "@rbxts/services";
-import { BaseController } from "../controllers/BaseController";
+import { RunService, Workspace } from "@rbxts/services";
+import { BattleController } from "../controllers/BattleController";
+import { CommandController } from "../controllers/CommandController";
 import { GameState, GameStateManager } from "../flow/GameStateManager";
 import { Connection, Signal } from "../Libraries/Signal";
 import { ClientSideOnly } from "../Libraries/Utilities";
@@ -12,6 +14,7 @@ import { FallbackStackBehavior } from "../stacks/local/FallbackStackBehavior";
 import { StackBehavior } from "../stacks/local/StackBehavior";
 import { CommandUnit } from "../stacks/organization/elements/CommandUnit";
 import { Faction } from "../stacks/organization/elements/Faction";
+import { BaseOrder } from "../stacks/organization/orders/BaseOrder";
 import { GameStack, StackBehaviorConstructors } from "../stacks/StackManager";
 import { GuiManager } from "./gui/GuiManager";
 import { CameraModule } from "./local/cameras/CameraModule";
@@ -19,10 +22,65 @@ import { ControlModule } from "./local/controls/ControlModule";
 import { PlayerModule } from "./local/PlayerModule";
 import { PlayerState } from "./PlayerState";
 
+function getHorizontalLook(position: CFrame) {
+	return CFrame.lookAt(position.Position, new Vector3(position.LookVector.X, 0, position.LookVector.Z));
+}
+
+export class PlayerController extends BattleController {
+	public readonly behavior = new NetworkVariable<PlayerBehavior>(this, undefined!);
+
+	public onOrderReceived(order: BaseOrder<any>): void {
+
+	}
+
+	protected onControllerEnabled(): void {
+		if (RunService.IsServer()) {
+			this.getPlayer().Character = this.character.rig.getValue();
+
+			this.character.died.connect(() => {
+				const playerBehavior = this.getPlayerBehavior();
+				
+				playerBehavior.state.setValue(PlayerState.ELIMINATED);
+				playerBehavior.getCurrentStackBehavior().onEliminated();
+			});
+		} else {
+			this.getPlayerBehavior().getControlModule().SetMoveFunction((dir, cameraRelative) => {
+				const final = cameraRelative ? getHorizontalLook(Workspace.CurrentCamera!.CFrame).mul(new CFrame(dir)).LookVector : dir;
+
+				this.character.getHumanoid().Move(final);
+			});
+		}
+	}
+
+	protected onControllerDisabled(): void {
+		if (RunService.IsClient()) this.getPlayerBehavior().getControlModule().SetMoveFunction(undefined);
+	}
+
+	protected getSourceScript(): ModuleScript {
+		return script as ModuleScript;
+	}
+
+	public onStart(): void {
+
+	}
+
+	public willRemove(): void {
+
+	}
+
+	protected getPlayerBehavior() {
+		return this.behavior.getValue();
+	}
+
+	protected getPlayer() {
+		return this.getPlayerBehavior().player.getValue();
+	}
+}
+
 /**
  * The PlayerBehavior is the manager used to manage and interface with an individual Player's scripts and behaviors.
  */
-export class PlayerBehavior extends NetworkBehavior implements BaseController {
+export class PlayerBehavior extends NetworkBehavior implements CommandController {
 	public readonly player = new NetworkVariable<Player>(this, undefined!);
 	public readonly state = new NetworkVariable<PlayerState>(this, PlayerState.LOBBY);
 	public readonly faction = new NetworkVariable<Faction>(this, undefined!);
@@ -42,6 +100,8 @@ export class PlayerBehavior extends NetworkBehavior implements BaseController {
 	public commandedUnits: CommandUnit[] = [];
 
 	private gameStateConnection: Connection<[GameState]> | undefined;
+
+	private readonly characterController = new NetworkVariable<PlayerController>(this, undefined!);
 
 	constructor(gameObject: GameObject) {
 		super(gameObject);
@@ -76,12 +136,11 @@ export class PlayerBehavior extends NetworkBehavior implements BaseController {
 		});
 
 		if (RunService.IsServer()) {
-			this.commandedUnitsChanged.connect(() => {
-				if (this.commandedUnits.size() === 0 && this.state.getValue() === PlayerState.IN_GAME) {
-					this.state.setValue(PlayerState.ELIMINATED);
-					this.currentStackBehavior.onEliminated();
-				}
-			});
+			this.characterController.setValue(this.getGameObject().addComponent(PlayerController, {
+				initialNetworkVariableStates: ({
+					behavior: this
+				} satisfies ExtractNetworkVariables<PlayerController> as unknown as Map<string, Networking.NetworkableTypes>)
+			}));
 		}
 
 		this.gameStateConnection = GameStateManager.getSingleton().state.onValueChanged.connect(state => this.state.applyValue(PlayerState.DEBRIEFING));
@@ -131,7 +190,12 @@ export class PlayerBehavior extends NetworkBehavior implements BaseController {
 		this.commandedUnitsChanged.fire();
 	}
 
+	//#region Getters
 	public getCurrentStackBehavior(): StackBehavior {
 		return this.currentStackBehavior;
+	}
+
+	public getBattleController(): PlayerController {
+		return this.characterController.getValue();
 	}
 }

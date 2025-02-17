@@ -24,6 +24,7 @@ export class MoveOrderBehavior extends OrderBehavior<MoveOrder> {
 		this.controller.addMovement(this.movement, MOVE_ORDER_PRIORITY);
 		this.controller.yieldUntilMovementCompleted(this.movement).then(() => this.controller.removeMovement(this.movement));
 
+		// Bug, changing commander will cause override to deactivate
 		this.isCommanderChangedConnection = this.character.onIsCommanderChanged.connect(isCommander => this.update(isCommander));
 		this.update();
 	}
@@ -37,7 +38,12 @@ export class MoveOrderBehavior extends OrderBehavior<MoveOrder> {
 
 	}
 
-	public update(isCommander = this.character.isCommander()) {
+	public update(isCommander = this.shouldMove()) {
 		this.movement.enabled = isCommander;
+	}
+
+	public shouldMove() {
+		return true;
+		// return this.character.isCommander()
 	}
 }

@@ -232,6 +232,15 @@ export namespace ORBATViewer {
 							Text={`Parent: ${currentElement.parent.getValue().name.getValue()}`}
 							FontFace={Font.fromName("Roboto", Enum.FontWeight.Bold)}
 						/>
+						{currentElement.directMembers.map((member, i) => <StyleButton
+							Event={{
+								Activated: () => PlayerAssignmentsManager.singleton.requestCharacterAssignment(member.getId())
+							}}
+						>
+							<StyleTextLabel
+								Text={`${i}`}
+							/>
+						</StyleButton>)}
 						{/* <StyleTextLabel
 							LayoutOrder={2}
 							TextSize={28}

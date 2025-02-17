@@ -1,3 +1,4 @@
+import { Character } from "../characters/Character";
 import { GameObject } from "../Scripts/Componentization/GameObject";
 import { NetworkBehavior } from "../Scripts/Networking/NetworkBehavior";
 import { RPC } from "../Scripts/Networking/RPC";
@@ -65,6 +66,27 @@ export class PlayerAssignmentsManager extends NetworkBehavior {
 		unit.controller.setValue(behavior);
 
 		behavior.stack.setValue(GameStack.COMMAND_STACK);
+		behavior.state.setValue(PlayerState.IN_GAME);
+	}
+
+	@RPC.Method({
+		allowedEndpoints: RPC.AllowedEndpoints.CLIENT_TO_SERVER
+	})
+	public requestCharacterAssignment(characterId: string, params: RPC.IncomingParams = RPC.DefaultIncomingParams) {
+		assert(params.sender);
+
+		const char = SpawnManager.getNetworkBehaviorById<Character>(characterId);
+
+		assert(char !== undefined, `Bad character id: ${characterId}`);
+		assert(char instanceof Character, `Not a character.`);
+
+		const behavior = PlayerManager.singleton.getBehaviorFromPlayer(params.sender);
+
+		assert(char.getFaction() === behavior.faction.getValue(), `Character is not owned by the faction of the requester.`);
+	
+		char.setController(behavior.getBattleController());
+
+		behavior.stack.setValue(GameStack.BATTLE_STACK);
 		behavior.state.setValue(PlayerState.IN_GAME);
 	}
 }

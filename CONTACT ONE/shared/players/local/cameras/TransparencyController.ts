@@ -134,7 +134,7 @@ export class TransparencyController {
 
 	IsValidPartToModify(part: Instance): part is BasePart {
 		if (FFlagUserHideCharacterParticlesInFirstPerson) {
-			return !HIDE_IN_FIRST_PERSON_CLASSES.some(className => part.IsA(className as keyof Instances) && !this.HasToolAncestor(part));
+			return HIDE_IN_FIRST_PERSON_CLASSES.some(className => part.IsA(className as keyof Instances)) && !this.HasToolAncestor(part);
 		} else {
 			return part.IsA("BasePart") && part.IsA("Decal") && !this.HasToolAncestor(part);
 		}

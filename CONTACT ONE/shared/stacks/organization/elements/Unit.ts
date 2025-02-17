@@ -1,12 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { RunService, Workspace } from "@rbxts/services";
-import { AIBattleController, createMovement } from "CONTACT ONE/shared/ai/battlethink/AIBattleController";
-import { GoalType } from "CONTACT ONE/shared/ai/battlethink/Pathfinder3";
+import { RunService } from "@rbxts/services";
 import { Character } from "CONTACT ONE/shared/characters/Character";
 import { Formations } from "CONTACT ONE/shared/characters/Formations";
 import { NetworkBehaviorVariableBinder } from "CONTACT ONE/shared/utilities/NetworkVariableBinder";
-import { Connection } from "CORP/shared/Libraries/Signal";
-import { dict, ServerSideOnly } from "CORP/shared/Libraries/Utilities";
+import { Connection, Signal } from "CORP/shared/Libraries/Signal";
+import { ServerSideOnly } from "CORP/shared/Libraries/Utilities";
 import { NetworkList } from "CORP/shared/Scripts/Networking/NetworkList";
 import { NetworkVariable } from "CORP/shared/Scripts/Networking/NetworkVariable";
 import { GameStack } from "../../StackManager";
@@ -59,6 +57,9 @@ export abstract class Unit<P extends BaseElement<any>, C extends BaseElement<any
 
 	private targetDiedConnections: Connection<[]>[] = [];
 
+	public readonly memberRemoved = new Signal<[Character]>(`memberRemoved`);
+	public readonly memberAdded = new Signal<[Character]>(`memberAdded`);
+
 	/**
 	 * Returns a recursively fetched array of all units descending from this one.
 	 */
@@ -72,6 +73,8 @@ export abstract class Unit<P extends BaseElement<any>, C extends BaseElement<any
 	public memberOnAdded(member: Character) {
 		if (!this.directMembers.includes(member)) {
 			this.directMembers.push(member);
+
+			this.memberAdded.fire(member);
 		}
 	}
 
@@ -80,6 +83,8 @@ export abstract class Unit<P extends BaseElement<any>, C extends BaseElement<any
 			if (RunService.IsServer() && (member === this.commander.getValue() || !this.commander.getValue())) this.assignNewCommander(member);
 
 			this.directMembers.remove(this.directMembers.indexOf(member));
+
+			this.memberRemoved.fire(member);
 
 			if (RunService.IsServer()) this.checkIfShouldDestroy();
 		}
@@ -125,21 +130,21 @@ export abstract class Unit<P extends BaseElement<any>, C extends BaseElement<any
 		this.commanderBinder.start();
 		this.parentBinder.start();
 
-		task.defer(() => {
-			if (this.sizeProfile.getValue().acronym === "S") {
-				const com = this.commander.getValue();
+		// task.defer(() => {
+		// 	if (this.sizeProfile.getValue().acronym === "S") {
+		// 		const com = this.commander.getValue();
 
-				const move = createMovement({
-					position: ((Workspace as dict).Target as Part).Position,
-					type: GoalType.PATHFIND_TO
-				});
+		// 		const move = createMovement({
+		// 			position: ((Workspace as dict).Target as Part).Position,
+		// 			type: GoalType.PATHFIND_TO
+		// 		});
 
-				const con = com.getController() as AIBattleController;
+		// 		const con = com.getController() as AIBattleController;
 
-				con.addMovement(move, 1000);
-				con.yieldUntilMovementCompleted(move).then(() => con.removeMovement(move));
-			}
-		});
+		// 		con.addMovement(move, 1000);
+		// 		con.yieldUntilMovementCompleted(move).then(() => con.removeMovement(move));
+		// 	}
+		// });
 	}
 
 	public getMembersRecursive(): Character[] {

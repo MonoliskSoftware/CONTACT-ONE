@@ -2,6 +2,7 @@ import { Players, RunService, Workspace } from "@rbxts/services";
 import { CameraModule } from "CONTACT ONE/shared/players/local/cameras/CameraModule";
 import { CameraUtils } from "CONTACT ONE/shared/players/local/cameras/CameraUtils";
 import { ControlModule } from "CONTACT ONE/shared/players/local/controls/ControlModule";
+import { PlayerState } from "CONTACT ONE/shared/players/PlayerState";
 import { NetworkVariable } from "CORP/shared/Scripts/Networking/NetworkVariable";
 import { RPC } from "CORP/shared/Scripts/Networking/RPC";
 import { CommandStackComponent } from "./gui/CommandStackComponent";
@@ -163,11 +164,19 @@ export class CommandStackBehavior extends StackBehavior {
 	public onStart(): void {
 		if (RunService.IsServer()) {
 			const model = this.getGameObject().getInstance();
+			const playerBehavior = this.playerBehavior.getValue();
 
-			model.AddPersistentPlayer(this.playerBehavior.getValue().player.getValue());
+			model.AddPersistentPlayer(playerBehavior.player.getValue());
 			model.ModelStreamingMode = Enum.ModelStreamingMode.PersistentPerPlayer;
 
 			this.viewer.setValue(this.getGameObject().addInstancePrefabFromPath(CommandStackViewerPath));
+		
+			playerBehavior.commandedUnitsChanged.connect(() => {
+				if (playerBehavior.commandedUnits.size() === 0 && playerBehavior.state.getValue() === PlayerState.IN_GAME) {
+					playerBehavior.state.setValue(PlayerState.ELIMINATED);
+					this.onEliminated();
+				}
+			});
 		} else {
 			this.cameraModule = new CommandStackCameraModule(this);
 		}
