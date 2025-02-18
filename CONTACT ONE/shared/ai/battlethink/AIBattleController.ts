@@ -5,6 +5,7 @@ import { Formations } from "CONTACT ONE/shared/characters/Formations";
 import { BattleController } from "CONTACT ONE/shared/controllers/BattleController";
 import { Unit } from "CONTACT ONE/shared/stacks/organization/elements/Unit";
 import { BaseOrder } from "CONTACT ONE/shared/stacks/organization/orders/BaseOrder";
+import { HeartbeatManager } from "CONTACT ONE/shared/util/HeartbeatManager";
 import { dict } from "CORP/shared/Libraries/Utilities";
 import { OrderBehavior } from "./OrderBehavior";
 import { CharacterPathfinder, Goal, GoalType } from "./Pathfinder3";
@@ -32,6 +33,8 @@ export function createMovement(goal: Goal, enabled = true): Movement {
 
 const FORMATION_RECALCULATION_THRESHOLD = 4;
 
+const HEARTBEAT_CATEGORY = "AIBattleController";
+
 export class AIBattleController extends BattleController {
 	// Utility references
 	private humanoid!: Humanoid;
@@ -51,8 +54,6 @@ export class AIBattleController extends BattleController {
 	// Order management
 	private currentOrder: BaseOrder<any> | undefined;
 	private currentOrderBehavior: OrderBehavior<BaseOrder<any>> | undefined;
-
-	private lastUpdate = 0;
 
 	// Pathfinding
 	private pathfinder!: CharacterPathfinder;
@@ -104,6 +105,8 @@ export class AIBattleController extends BattleController {
 
 	//#region Updating
 	private updateCurrentMovement(): Movement | undefined {
+		debug.profilebegin("Movement update");
+
 		const currentMovement = this.getCurrentMovement();
 
 		if (currentMovement !== this.lastMovement) {
@@ -112,15 +115,21 @@ export class AIBattleController extends BattleController {
 			this.pathfinder.setCurrentGoal(currentMovement?.goal);
 		}
 
+		debug.profileend();
+
 		return currentMovement;
 	}
 
 	private update(deltaTime: number) {
 		if (this.isEnabled()) {
+			debug.profilebegin("AIBattleController update");
+
 			this.pathfinder.update();
 
 			this.updateCurrentMovement();
 			this.updateMovementIntoFormation();
+
+			debug.profileend();
 		}
 	}
 	//#endregion
@@ -137,10 +146,12 @@ export class AIBattleController extends BattleController {
 
 		const final = Formations.FormationComputers[unit.formation.getValue()](index);
 
-		return commanderOrigin.mul(new CFrame(final.X * 8, 0, final.Y * 8)).Position;
+		return commanderOrigin.mul(new CFrame(final.X * this.currentFormationWidth, 0, final.Y * this.currentFormationWidth)).Position;
 	}
 
 	private updateMovementIntoFormation() {
+		debug.profilebegin("Formation movement update");
+
 		const shouldMoveIntoFormation = !this.character.isCommander() && this.shouldMaintainFormation();
 
 		if (this.formationMovement !== undefined) {
@@ -150,6 +161,8 @@ export class AIBattleController extends BattleController {
 		} else {
 			warn("No this.formationMovement");
 		}
+
+		debug.profileend();
 	}
 	//#endregion
 
@@ -203,7 +216,8 @@ export class AIBattleController extends BattleController {
 	//#region Callbacks
 	public onStart(): void {
 		if (RunService.IsServer()) {
-			this.heartbeatConnection = RunService.Heartbeat.Connect(delta => this.update(delta));
+			// this.heartbeatConnection = RunService.Heartbeat.Connect(delta => this.update(delta));
+			HeartbeatManager.bind(HEARTBEAT_CATEGORY, delta => this.update(delta));
 
 			// Setup formations
 			this.formationMovement = this.addMovementFromGoal(this.formationGoal, FORMATION_BEHAVIOR_PRIORITY);
@@ -227,5 +241,10 @@ export class AIBattleController extends BattleController {
 
 	static {
 		Character.defaultController = this;
+
+		HeartbeatManager.registerCategory(HEARTBEAT_CATEGORY, {
+			budget: 20,
+			cost: 17
+		});
 	}
 }

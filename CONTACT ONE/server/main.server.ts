@@ -36,6 +36,7 @@ const q: Scenarios.ORBAT = {
 	]
 };
 
-Workspace.WaitForChild("WhiteHouseBuild2").Destroy();
+Workspace.WaitForChild("WHRef").Destroy();
+Workspace.WaitForChild("WHRef2").Destroy();
 
 BattleManager.getSingleton().loadORBAT(q);

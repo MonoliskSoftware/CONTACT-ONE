@@ -17,6 +17,7 @@ import { CommandUnit } from "../stacks/organization/elements/CommandUnit";
 import { Faction } from "../stacks/organization/elements/Faction";
 import { Unit } from "../stacks/organization/elements/Unit";
 import { NetworkBehaviorVariableBinder } from "../utilities/NetworkVariableBinder";
+import { CharacterManager } from "./CharacterManager";
 import { CharacterPhysics } from "./CharacterPhysics";
 
 const PathToRig = "CONTACT ONE/assets/prefabs/HumanoidRig";
@@ -172,6 +173,11 @@ export class Character extends NetworkBehavior {
 	}
 
 	public onStart(): void {
+		CharacterManager.onCharacterAdded(this);
+		
+		this.unitBinder.start();
+		this.controller.onValueChanged.connect(() => this.onControllerChanged());
+
 		if (RunService.IsServer()) {
 			// needs refinement
 			this.initializeRig();
@@ -186,9 +192,6 @@ export class Character extends NetworkBehavior {
 			// Setup callbacks
 			this.collector.add(this.getHumanoid().Died.Connect(() => this.onDied()));
 		});
-
-		this.unitBinder.start();
-		this.controller.onValueChanged.connect(() => this.onControllerChanged());
 	}
 
 	public willRemove(): void {

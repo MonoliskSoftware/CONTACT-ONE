@@ -4,6 +4,7 @@ export namespace CharacterPhysics {
 	export const PHYSICS_GROUP_CHARACTER = "Character";
 	export const PHYSICS_GROUP_CHARACTER_COLLIDER = "CharacterCollider";
 	export const PHYSICS_GROUP_DEFAULT = "Default";
+	export const PHYSICS_GROUP_ORDER_CAST = "OrderCast";
 
 	export const CHARACTER_COLLIDER_SIZE = new Vector3(3, 3, 3);
 	export const CHARACTER_COLLIDER_OFFSET = new Vector3(0, 0, 0);
@@ -16,5 +17,9 @@ export namespace CharacterPhysics {
 		PhysicsService.CollisionGroupSetCollidable(PHYSICS_GROUP_CHARACTER_COLLIDER, PHYSICS_GROUP_CHARACTER_COLLIDER, false);
 		PhysicsService.CollisionGroupSetCollidable(PHYSICS_GROUP_CHARACTER_COLLIDER, PHYSICS_GROUP_CHARACTER, false);
 		PhysicsService.CollisionGroupSetCollidable(PHYSICS_GROUP_CHARACTER_COLLIDER, PHYSICS_GROUP_DEFAULT, true);
+
+		PhysicsService.RegisterCollisionGroup(PHYSICS_GROUP_ORDER_CAST);
+		PhysicsService.CollisionGroupSetCollidable(PHYSICS_GROUP_ORDER_CAST, PHYSICS_GROUP_CHARACTER, false);
+		PhysicsService.CollisionGroupSetCollidable(PHYSICS_GROUP_ORDER_CAST, PHYSICS_GROUP_CHARACTER_COLLIDER, false);
 	}
 }

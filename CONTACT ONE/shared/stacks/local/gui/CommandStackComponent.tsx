@@ -3,6 +3,7 @@ import Object from "@rbxts/object-utils";
 import React, { SetStateAction, useContext, useEffect, useState } from "@rbxts/react";
 import { createPortal } from "@rbxts/react-roblox";
 import { Players, RunService, Workspace } from "@rbxts/services";
+import { CharacterPhysics } from "CONTACT ONE/shared/characters/CharacterPhysics";
 import { GuiManagerContext } from "CONTACT ONE/shared/players/gui/GuiManagerContext";
 import { ButtonDisabledProps, StyleButton } from "CONTACT ONE/shared/players/gui/style/StyleButton";
 import { StyleFrame } from "CONTACT ONE/shared/players/gui/style/StyleFrame";
@@ -171,7 +172,11 @@ const SubordinateSelector: React.FC<{
 };
 
 function castLookRay(camera: Camera) {
-	const result = Workspace.Raycast(camera.CFrame.Position, camera.CFrame.LookVector.mul(1024));
+	const params = new RaycastParams();
+
+	params.CollisionGroup = CharacterPhysics.PHYSICS_GROUP_ORDER_CAST;
+
+	const result = Workspace.Raycast(camera.CFrame.Position, camera.CFrame.LookVector.mul(1024), params);
 
 	return result ? result.Position : camera.CFrame.Position.add(camera.CFrame.LookVector.mul(1024));
 }
@@ -489,7 +494,7 @@ export const CommandStackComponent: React.FC<StackComponentProps<CommandStackBeh
 					FillDirection={Enum.FillDirection.Horizontal}
 				/>
 			</>} */}
-			<UnitSelector 
+			<UnitSelector
 				roots={controlledUnits}
 			/>
 

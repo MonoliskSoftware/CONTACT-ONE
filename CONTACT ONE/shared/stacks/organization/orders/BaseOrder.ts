@@ -104,7 +104,7 @@ export abstract class BaseOrder<T extends dict> extends NetworkBehavior {
 	 */
 	@ServerSideOnly
 	public setAssignedActors(units: IElementActor[]): void {
-		this.assignedActors.setValue(units);
+		this.assignedActors.setAll(units);
 	}
 
 	// /**
@@ -129,7 +129,7 @@ export abstract class BaseOrder<T extends dict> extends NetworkBehavior {
 	 * @returns An array of units assigned to this order.
 	 */
 	public getAssignedActors(): IElementActor[] {
-		return this.assignedActors.getValue();
+		return this.assignedActors.getAll();
 	}
 
 	/**
@@ -224,6 +224,8 @@ export abstract class BaseOrder<T extends dict> extends NetworkBehavior {
 	@ServerSideOnly
 	public execute() {
 		const handleMember = (member: Character) => member.getController().onOrderReceived(this);
+
+		print(this.getAssignedActors());
 
 		this.getAssignedActors().forEach(actor => actor instanceof Character ? handleMember(actor) : (actor as unknown as Unit<any, any>).getMembersRecursive().forEach(handleMember));
 		this.onExecutionBegan();
